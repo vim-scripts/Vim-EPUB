@@ -1,0 +1,72 @@
+priority -50
+
+###########################################################################
+#                         Dublin Core XML Snippets                        #
+#                                                                         #
+# By etnadji, for vim-epub                                                #
+###########################################################################
+
+snippet dc "Dublin Core: Identifier" b
+<dc:identifier id="${1:BookID}" opf:scheme="${2:UUID}">${3:urn:uuid:}${4:UUID}</dc:identifier>
+$0
+endsnippet
+
+snippet dc "Dublin Core: Title" b
+<dc:title>${1:Ebook Title}</dc:title>
+$0
+endsnippet
+
+snippet dc "Dublin Core: Creator (Author)" b
+<dc:creator opf:role="aut">{1:Author name}</dc:creator>
+$0
+endsnippet
+
+snippet dcIdent "Dublin Core: Language" b
+<dc:language>${1:fr}</dc:language>
+$0
+endsnippet
+
+snippet dc "Dublin Core: Rights" b
+<dc:rights>${1:Domaine Public}</dc:rights>
+$0
+endsnippet
+
+snippet dc "Dublin Core: Publisher" b
+<dc:publisher>${1:Edition}</dc:publisher>
+$0
+endsnippet
+
+snippet dc "Dublin Core: Include the type" b
+<dc:type>${1:Text}</dc:type>
+$0
+endsnippet
+
+snippet dc "Dublin Core: Contributor (Book productor)" b
+<dc:contributor opf:role="bkp">${1:Society}</dc:contributor>
+$0
+endsnippet
+
+snippet dc "Dublin Core: Contributor (Author)" b
+<dc:contributor opf:role="aut">${1:Author}</dc:contributor>
+$0
+endsnippet
+
+snippet dc "Dublin Core: Subject (genre...)" b
+<dc:subject>${1:Subject}</dc:subject>
+$0
+endsnippet
+
+snippet dc "Dublin Core: Book description" b
+<dc:description>${1}</dc:description>
+$0
+endsnippet
+
+snippet dc "Dublin Core: Date (publication)" b
+<dc:date opf:event="publication">${1:year-month-day}</dc:date>
+$0
+endsnippet
+
+snippet dc "Dublin Core: Date (creation)" b
+<dc:date opf:event="creation">${1:year-monthy-day}</dc:date>
+$0
+endsnippet

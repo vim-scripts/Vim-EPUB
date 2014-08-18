@@ -1,0 +1,116 @@
+*vim-epub-french.txt* Un greffon pour éditer des fichiers EPUB.
+
+===============================================================================
+CONTENTS                                                               *vim-epub*
+
+   1. Introduction ............................................. |vepub-intro|
+   2. Pré-requis ........................................ |vepub-requirements|
+
+   3. Usage .................................................... |vepub-usage|
+      3.1 Commandes ......................................... |vepub-commands|
+      3.2 Extras .............................................. |vepub-extras|
+
+   4. Licence ................................................ |vepub-licence|
+
+===============================================================================
+1. Introduction                                                     *vepub-intro*
+
+Cet âne suffira pour vous aider.
+
+            ^__^
+            (oo)\_______
+            (__)\       )\/\
+                ||----w |
+                ||     ||
+
+Des versions de ce fichier d’aide en d’autres langues sont disponibles dans le
+dossier doc/ de ce greffon.
+
+Traductions disponibles:
+  - english (anglais) (vim-epub.txt, fichier par défaut)
+
+===============================================================================
+2. Pré-requis                                                *vepub-requirements*
+
+vim-epub nécessite une copie de Vim compilée avec le support de Python.
+Essayez:
+
+	:version
+
+Si +python apparait, tout est bon.
+
+unzip est également requis.
+
+===============================================================================
+3. Usage                                                            *vepub-usage*
+
+vim-epub ne définit aucun mapping. Libre à vous de choisir les commandes à
+mapper.
+
+-------------------------------------------------------------------------------
+3.1 Commandes                                                    *vepub-commands*
+
+AddNewPage ~
+
+Usage:
+	:AddNewPage
+
+Demande le nom d’une nouvelle page vide (xhtml) et l’ajoute au fichier EPUB.
+N’oubliez pas de taper ':edit' pour mettre à jour le tampon du contenu de
+l’EPUB.
+
+AddNewCSS ~
+
+Usage:
+	:AddNewCSS
+
+Demande le nom d’une feuille de style vide (css) et l’ajoute au fichier EPUB.
+N’oubliez pas de taper ':edit' pour mettre à jour le tampon du contenu de
+l’EPUB.
+
+AddMedia ~
+
+Usage:
+	:AddMedia
+
+Demande le chemin d’un media existant et l’ajoute au fichier EPUB.
+Le média peut être une image, du (X)HTML, CSS, des polices d’écriture…
+
+AddTocPage ~
+
+Usage:
+        :AddTocPage
+
+Ajoute une table des matières (TableOfContents.xhtml) dans le fichier EPUB.
+
+LinkToCss ~
+
+Usage:
+        :LinkToCss
+
+Demande à  l’utilisateur le  fichier CSS  (inclus dans  le fichier
+EPUB) à utiliser et ajoute sa définition à la ligne courante.
+
+OpenReader ~
+
+Usage:
+        :OpenReader
+
+Ouvre le fichier EPUB dans le liseur de livres numériques défini par le
+système.
+
+-------------------------------------------------------------------------------
+3.2 Extras                                                         *vepub-extras*
+
+Snippets ~
+
+Des snippets pour le greffon UltiSnips sont également disponibles avec vim-epub
+(dossier snippets/). Copiez-les dans votre dossier de snippets pour une 
+meilleure expérience d’édition.
+
+===============================================================================
+4. Licence                                                        *vepub-licence*
+
+vim-epub est publié sous la licence GNU General Public version 3 (GPL v3).
+
+vim:tw=78:ts=8:ft=help:norl:spelllang=fr:

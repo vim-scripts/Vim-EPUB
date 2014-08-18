@@ -1,0 +1,20 @@
+This is a mirror of http://www.vim.org/scripts/script.php?script_id=5006
+
+Github page: https://github.com/etnadji/vim-epub
+
+With Vim, you can already edit an epub file:
+
+au BufReadCmd *.epub call zip#Browse(expand("<amatch>"))
+
+This allows you to modify the EPUB *existing* contents. But you can't add files and many other things whithout extracting the EPUB file and recompress it in 2-step.
+
+With Vim-EPUB, you can:
+
+− Add an empty page (XHTML).
+− Add an empty CSS stylesheet.
+− Add a Table of contents page.
+− Add medias (images, etc.).
+− Make your OS open the EPUB with its selected reader.
+− Provide a menu to easily link XHTML and CSS contents.
+
+Please note that is my first plugin. Advices, comments welcomed.

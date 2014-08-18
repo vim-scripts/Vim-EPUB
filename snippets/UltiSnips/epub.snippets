@@ -1,0 +1,180 @@
+priority -50
+
+###########################################################################
+#                            EPUB     Snippets                            #
+#                                                                         #
+# By etnadji, for vim-epub                                                #
+###########################################################################
+
+#--- Skels ----------------------------------------------------------
+
+snippet opf "content.opf skeleton" b
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+
+<package xmlns="http://www.idpf.org/2007/opf" unique-identifier="BookId" version="2.0">
+
+  <metadata xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:opf="http://www.idpf.org/2007/opf">
+    <!-- Dublin Core elements -->
+  </metadata>
+
+  <manifest>
+    <!-- Manifest items -->
+  </manifest>
+
+  <spine toc="ncx">
+    <!-- Spine items -->
+  </spine>
+
+  <guide>
+    <!-- Guide references -->
+  </guide>
+
+</package>
+endsnippet
+
+snippet toc "toc.ncx skeleton" b
+<?xml version="1.0" encoding="utf-8"?>
+
+<!DOCTYPE ncx PUBLIC "-//NISO//DTD ncx 2005-1//EN"
+ "http://www.daisy.org/z3986/2005/ncx-2005-1.dtd">
+
+<ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" version="2005-1">
+
+  <head>
+  </head>
+
+  <docTitle>
+    <text>${#:Ebook name}</text>
+  </docTitle>
+
+  <navMap>
+    <!-- NavPoint elements -->
+  </navMap>
+
+</ncx>
+endsnippet
+
+#--- Content.opf ----------------------------------------------------
+
+# Metadata
+
+snippet metadata "EPUB OPF metadata block" b
+<metadata xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:opf="http://www.idpf.org/2007/opf">
+  ${0:Dublin core elems}
+</metadata>
+endsnippet
+
+snippet meta "EPUB OPF metadata item: meta (non-Dublin Core) (calibre)"
+<meta content="${1}" name="${2}:${3}" />
+$0
+endsnippet
+
+snippet meta "EPUB OPF metadata item: meta (non-Dublin Core) (other apps)"
+<meta content="${1}" name="${2}" />
+$0
+endsnippet
+
+# Manifest
+
+snippet manifest "EPUB OPF Manifest block" b
+<manifest>
+  ${0:manitem}
+</manifest>
+endsnippet
+
+snippet manitem "EPUB OPF Manifest item (xhtml page)" b
+<item href="${1:Text/}${2:Front.xhtml}" id="$2" media-type="application/xhtml+xml" />
+$0
+endsnippet
+
+snippet manitem "EPUB OPF Manifest item (toc.ncx)" b
+<item href="toc.ncx" id="ncx" media-type="application/x-dtbncx+xml" />
+$0
+endsnippet
+
+snippet manitem "EPUB OPF Manifest item (css)" b
+<item href="${1:Styles/}${2:StyleBase.css}" id="$2" media-type="text/css" />
+$0
+endsnippet
+
+snippet manitem "EPUB OPF Manifest item (image)" b
+<item href="${1:Images/}${2:logo150.png}" id="$2" media-type="image/${3:png}" />
+$0
+endsnippet
+
+snippet manitem "EPUB OPF Manifest item (ttf font)" b
+<item href="${1:Fonts/}${2:plop.ttf}" id="$2" media-type="application/x-font-ttf" />
+$0
+endsnippet
+
+# Spine
+
+snippet spine "EPUB OPF Spine block" b
+<spine toc="ncx">
+  $0
+</spine>
+endsnippet
+
+snippet spitem "EPUB OPF Spine item" b
+<itemref idref="${1:ManifestID}" />
+$0
+endsnippet
+
+# Guide
+
+snippet guide "EPUB OPF Guide block" b
+<guide>
+  $0
+</guide>
+endsnippet
+
+snippet gref "EPUB OPF Guide reference (title page)" b
+<reference href="${1:Text/}${2:TitlePage.xhtml}" title="${3:Page de titre}" type="title-page" />
+$0
+endsnippet
+
+snippet gref "EPUB OPF Guide reference (text)" b
+<reference href="${1:Text/}${2:Text.xhtml}" title="${3:Texte}" type="text" />
+$0
+endsnippet
+
+snippet gref "EPUB OPF Guide reference (colophon)" b
+<reference href="${1:Text/}${2:Sources.xhtml}" title="${3:Colophon}" type="colophon" />
+$0
+endsnippet
+
+snippet gref "EPUB OPF Guide reference (cover)" b
+<reference href="${1:Text/}${2:Cover.xhtml}" title="${3:Couverture}" type="cover" />
+$0
+endsnippet
+
+snippet gref "EPUB OPF Guide reference (copyright page)" b
+<reference href="${1:Text/}${2:licence.xhtml}" title="${3:Copyright Page}" type="copyright-page" />
+$0
+endsnippet
+
+snippet gref "EPUB OPF Guide reference (credits/acknowledgements)" b
+<reference href="${1:Text/}${2:credits.xhtml}" title="${3:Acknowledgements}" type="acknowledgements" />
+$0
+endsnippet
+
+
+#--- Toc.ncx --------------------------------------------------------
+
+# Nav Map / Nav Point
+
+snippet nav "EPUB NCX navmap" b
+<navMap>
+  ${0:navpoint items}
+</navMap>
+endsnippet
+
+snippet navi "EPUB NCX navpoint" b
+<navPoint id="${1:navPointID}" playOrder="${2:1}">
+  <navLabel>
+    <text>${3:Some title}</text>
+  </navLabel>
+  <content src="${4:Text/}${5:bla.xhtml}" />
+</navPoint>
+endsnippet
+
