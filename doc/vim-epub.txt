@@ -7,10 +7,12 @@ CONTENTS                                                               *vim-epub
    2. Requirements ...................................... |vepub-requirements|
 
    3. Usage .................................................... |vepub-usage|
-      3.1 Commands .......................................... |vepub-commands|
-      3.2 Extras .............................................. |vepub-extras|
+      3.1 Application the commands ............................. |vepub-field|
+      3.2 Commands .......................................... |vepub-commands|
+      3.3 Extras .............................................. |vepub-extras|
 
    4. Licence ................................................ |vepub-licence|
+   5. Remerciements ................................. |vepub-acknowledgements|
 
 ===============================================================================
 1. Intro                                                            *vepub-intro*
@@ -43,29 +45,69 @@ You'll also need unzip.
 ===============================================================================
 3. Usage                                                            *vepub-usage*
 
-vim-epub doesn't define any mapping. Map all commands you want.
+vim-epub doesn't define any mapping. Map all the commands you want.
+
+Some commands - typically those who add files − will need a ':edit'
+to reveal  their action and  update the EPUB's contents  buffer. They
+are marked with {NeedRefresh}.
 
 -------------------------------------------------------------------------------
-3.1 Commands                                                     *vepub-commands*
+3.1 Application of the commands                                     *vepub-field*
+
+Vim-EPUB use zip.vim to open and modify an EPUB's content. At the opening of
+a file, the buffer of the EPUB's file contents is provided by zip.vim.
+
+This buffer may look like this:
+
+	zip.vim version v27
+	" Browsing zipfile /home/kaboom/test.epub
+	" Select a file with cursor and press ENTER
+
+	mimetype
+	OEBPS/Images/Foo.png
+	OEBPS/toc.ncx
+	OEBPS/content.opf
+	OEBPS/Styles/Style.css
+	OEBPS/Text/Text.xhtml
+	META-INF/container.xml
+
+Some Vim-EPUB's commands are only usable on this "EPUB's content" buffer.
+In this documentation, they are marked with {OnEPUBContentsBuffer}.
+
+Some Vim-EPUB's commands are only usable on text files' buffers (xhtml…).
+In this documentation, they are marked with {OnTextBuffer}.
+
+At last, Some Vim-EPUB's commands are usable on any buffer.
+In this documentation, they are marked with {OnAnyBuffer}.
+
+-------------------------------------------------------------------------------
+3.2 Commands                                                     *vepub-commands*
 
 AddEmptyPage ~
+
+{OnAnyBuffer} {NeedRefresh}
 
 Usage:
         :AddEmptyPage
 
+
 Prompt for a new empty page name and add a new page (xhtml file) in the EPUB.
-Then, don't forget ':edit' to update the EPUB contents buffer.
+
 
 AddEmptyCSS ~
+
+{OnAnyBuffer} {NeedRefresh}
 
 Usage:
         :AddEmptyCSS
 
 Prompt for a new empty css  stylesheet name and add a stylesheet page
 (css file) in the EPUB.
-Then, don't forget ':edit' to update the EPUB contents buffer.
+
 
 AddMedia ~
+
+{OnAnyBuffer} {NeedRefresh}
 
 Usage:
         :AddMedia
@@ -73,22 +115,56 @@ Usage:
 Prompt for an existing media path and add it in the EPUB.
 The "media" can be: images,(X)HTML,CSS,fonts…
 
+
 AddTocPage ~
+
+{OnAnyBuffer} {NeedRefresh}
 
 Usage:
         :AddTocPage
 
 Add a table of contents page called TableOfContents.xhtml in the EPUB.
 
+
+RenameFile ~
+
+{OnEPUBContentsBuffer} {NeedRefresh}
+
+Usage:
+	:RenameFile
+
+
+Rename the  file on the  current line and fix  all the links  to this
+renamed file on the others files of the EPUB.
+
+
+BackupEPUB ~
+
+{OnAnyBuffer}
+
+Usage:
+	:BackupEPUB
+
+
+Make a backup  file of the EPUB named x.epub.user.bak  where x is the
+name given to the backup.
+
+
 LinkToCss ~
+
+{OnTextBuffer}
 
 Usage:
         :LinkToCss
 
+
 Prompt for an existing CSS file in the EPUB's contents and add its definition
 on the current line.
 
+
 OpenReader ~
+
+{OnAnyBuffer}
 
 Usage:
         :OpenReader
@@ -96,7 +172,7 @@ Usage:
 Open the EPUB file in the system-defined ebook viewer.
 
 -------------------------------------------------------------------------------
-3.2 Extras                                                         *vepub-extras*
+3.3 Extras                                                         *vepub-extras*
 
 Snippets ~
 
@@ -109,5 +185,13 @@ Check the vim-epub folder.
 4. Licence                                                        *vepub-licence*
 
 vim-epub is released under the GNU General Public Licence version 3 (GPL v3).
+
+===============================================================================
+5. Acknowledgements                                      *vepub-acknowledgements*
+
+To  Mikhail  Gusarov  for  path.py,  a  wrapper  around  os,  shutil,
+tempfile…
+
+    https://github.com/jaroco/path.py
 
 vim:tw=78:ts=8:ft=help:norl:spelllang=en:

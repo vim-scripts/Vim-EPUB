@@ -45,6 +45,8 @@ class EPUB:
                 self.original_epub["zip_object"] = zipfile.ZipFile(epub_master_buffer)
                 self.original_epub["zip_files"] = self.original_epub["zip_object"].namelist()
 
+                self.oebps = {"used":False,"variant":""}
+
             else:
                 self.valid = False
 
@@ -93,11 +95,14 @@ class EPUB:
         """
         Find the appropriate location in the EPUB tree for a new file.
 
-          - filetype (str):
+          - filetype (str or None):
               "text" for (X)HTML content
               "image" for images content
               "css" for CSS
               "misc" for unknown
+
+              None: Use this value to only determine if oebps structure
+              is used and the oebps variant (OEBPS or OPS).
 
         Returns:
           - destination (str)
@@ -105,79 +110,115 @@ class EPUB:
         # TODO add audio,video categories
 
         defined = False
-        oebps = False
 
         for f in self.original_epub["zip_files"]:
-            if f.startswith("OEBPS/") and not defined:
-                oebps = True
-                make_dir = True
-                defined = True
+            if not defined:
+                if f.startswith("OEBPS/") or f.startswith("OPS/"):
 
-            if oebps:
+                    self.oebps = {"used":True,"variant":""}
+
+                    make_dir = True
+                    defined = True
+
+                    # EPUB 2 (mostly)
+                    if f.startswith("OEBPS/"):
+                        self.oebps["variant"] = "OEBPS"
+                    # EPUB 3
+                    if f.startswith("OPS/"):
+                        self.oebps["variant"] = "OPS"
+
+            if self.oebps["used"] and filetype != None:
                 if filetype == "text":
-                    if f.startswith("OEBPS/Text/"):
+                    if f.startswith("{0}/Text/".format(self.oebps["variant"])):
                         make_dir = False
+
                 if filetype == "image":
-                    if f.startswith("OEBPS/Images/"):
+                    if f.startswith("{0}/Images/".format(self.oebps["variant"])):
                         make_dir = False
+
                 if filetype == "css":
-                    if f.startswith("OEBPS/Styles/"):
+                    # Sigil variant
+                    if f.startswith("{0}/Styles/".format(self.oebps["variant"])):
+                        css_variant = "Styles"
                         make_dir = False
+
+                    # EPUB standard
+                    if f.startswith("{0}/Style/".format(self.oebps["variant"])):
+                        css_variant = "Style"
+                        make_dir = False
+
                 if filetype == "font":
-                    if f.startswith("OEBPS/Fonts/"):
+                    if f.startswith("{0}/Fonts/".format(self.oebps["variant"])):
                         make_dir = False
+
                 if filetype == "misc":
-                    if f.startswith("OEBPS/Misc/"):
+                    if f.startswith("{0}/Misc/".format(self.oebps["variant"])):
                         make_dir = False
             else:
                 # TODO
                 pass
 
-        if oebps:
+        if self.oebps["used"] and filetype != None:
+
             if filetype == "text":
-                ret = "OEBPS/Text/"
+                ret = "{0}/Text/".format(self.oebps["variant"])
+
             if filetype == "image":
-                ret = "OEBPS/Images/"
+                ret = "{0}/Images/".format(self.oebps["variant"])
+
             if filetype == "css":
-                ret = "OEBPS/Styles/"
+                ret = "{0}/{1}/".format(self.oebps["variant"],css_variant)
+
             if filetype == "font":
-                ret = "OEBPS/Fonts/"
+                ret = "{0}/Fonts/".format(self.oebps["variant"])
+
             if filetype == "misc":
-                ret = "OEBPS/Misc/"
+                ret = "{0}/Misc/".format(self.oebps["variant"])
 
             return ret,make_dir
         else:
             return None,None
 
-    def backup(self):
+    def backup(self,filename=None):
         """Backup the original epub."""
 
-        backup_file = "{0}.bak".format(self.original_epub["path"].abspath())
-        self.original_epub["path"].copy(backup_file)
-        print "EPUB Backup in {0}.".format(backup_file)
+        if filename is None:
+            backup_file = "{0}.vepub.bak".format(self.original_epub["path"].abspath())
+        else:
+            dirpath = os.sep.join(self.original_epub["path"].abspath().splitpath()[:-1])
+            backup_file = "{0}{1}{2}.epub.user.bak".format(dirpath,os.sep,filename)
 
-        return True
+        if backup_file:
+            self.original_epub["path"].copy(backup_file)
+
+            print "EPUB Backup in {0}.".format(backup_file)
+
+            return True
+        else:
+            return False
 
     def recompress(self):
         """Recompress the EPUB file from the temporary file."""
-        os.chdir(self.temporary_epub["path"])
 
-        if platform.system() in ["Linux","Darwin"] or "bsd" in platform.system().lower():
-            nzip = unicode(self.original_epub["path"].basename())
-        else:
-            # Windows…
-            return False
+        if self._have_correct_oebps_variant():
+            os.chdir(self.temporary_epub["path"])
 
-        if platform.system() == "Linux" or "bsd" in platform.system().lower:
-            os.popen('zip -X -Z store "{0}" mimetype'.format(nzip)).read()
-            os.popen('zip -r "{0}" META-INF/ OEBPS/'.format(nzip)).read()
-            return True
+            if platform.system() in ["Linux","Darwin"] or "bsd" in platform.system().lower():
+                nzip = unicode(self.original_epub["path"].basename())
+            else:
+                # Windows…
+                return False
 
-        if platform.system() == "Darwin":
-            os.system('zip -X "{0}" mimetype'.format(nzip))
-            os.system('zip -rg "{0}" META-INF -x \*.DS_Store'.format(nzip))
-            os.system('zip -rg "{0}" OEBPS -x \*.DS_Store'.format(nzip))
-            return True
+            if platform.system() == "Linux" or "bsd" in platform.system().lower:
+                os.popen('zip -X -Z store "{0}" mimetype'.format(nzip)).read()
+                os.popen('zip -r "{0}" META-INF/ {1}/'.format(nzip,self.oebps["variant"])).read()
+                return True
+
+            if platform.system() == "Darwin":
+                os.system('zip -X "{0}" mimetype'.format(nzip))
+                os.system('zip -rg "{0}" META-INF -x \*.DS_Store'.format(nzip))
+                os.system('zip -rg "{0}" {1} -x \*.DS_Store'.format(nzip,self.oebps["variant"]))
+                return True
 
     def move_new_and_clean(self):
         """Move the new EPUB file from recompress() and clean up."""
@@ -191,6 +232,67 @@ class EPUB:
         shutil.rmtree(self.temporary_epub["path"])
 
         return True
+
+    def _have_correct_oebps_variant(self):
+        if self.oebps["variant"]:
+            if self.oebps["variant"] in ["OPS","OEBPS"]:
+                return True
+            else:
+                return False
+        else:
+            self.guess_destination(None)
+
+            if self.oebps["variant"] in ["OPS","OEBPS"]:
+                return True
+            else:
+                return False
+
+    # Utils
+
+    def replace_string(self,action_field,old_string,new_string):
+        def replace(source_file,old_string,new_string):
+            with open(source_file,"r") as fi:
+                text = fi.read()
+
+                if old_string in text:
+                    text = text.replace(old_string,new_string)
+
+                return text
+
+        files = self.get_files_by_extension(action_field)
+
+        for f in files:
+            file_path = None
+
+            location,make_dir = self.guess_destination("text")
+
+            if location == "{0}/Text/".format(self.oebps["variant"]):
+                file_path = "{0}{1}".format(self.temporary_epub["path"],f)
+
+                old_string = old_string.replace(self.oebps["variant"],"..")
+                new_string = new_string.replace(self.oebps["variant"],"..")
+
+            if file_path is not None:
+                try:
+                    new_text = replace(file_path,old_string,new_string)
+
+                    os.remove(file_path)
+
+                    with open(file_path,"w") as fi:
+                        fi.write(new_text)
+                except IOError,err:
+                    if err.errno == 2:
+                        pass
+
+    def rename_file(self,old_path,new_path):
+        old_path = "{0}{1}".format(self.temporary_epub["path"],old_path)
+        new_path = "{0}{1}".format(self.temporary_epub["path"],new_path)
+
+        if self.temporary_epub["have_dir"]:
+            shutil.move(old_path,new_path)
+            return True
+        else:
+            return False
 
     # Files search
 
@@ -230,6 +332,28 @@ class EPUB:
 
         return filenames
 
+    def get_files_by_extension_in_temp(self,extension):
+        """
+        Return all files in the temporary EPUB's content with extension extension.
+
+          - extension: file extension without dot (ex: "js","css").
+                       Can be a list (ex: ["js","css"]).
+        """
+
+        filenames = []
+
+        if not isinstance(extension,list):
+            extension = [extension]
+
+        for ext in extension:
+            ext_string = ".{0}".format(ext)
+
+            for f in self.temporary_epub["path"].walkfiles():
+                if f.ext == ext_string:
+                    filenames.append(f)
+
+        return filenames
+
     # EPUB 2 methods
 
     def epub2_append_to_opf(self,filetype,media_path,ref):
@@ -240,7 +364,7 @@ class EPUB:
               "xhtml"
           - media_path: path of the new file to add to the OPF.
               path.path (idem) instance
-          - ref: path in the epub of the media, without "OEBPS".
+          - ref: path in the epub of the media, without "OEBPS" / "OPS".
               Ex: "Text/Section1.xhtml"
         """
 
@@ -294,55 +418,65 @@ class EPUB:
         else:
             spine = False
 
-        os.chdir("{0}OEBPS{1}".format(self.temporary_epub["path"],os.sep))
+        if self._have_correct_oebps_variant():
+            os.chdir("{0}{1}{2}".format(self.temporary_epub["path"],self.oebps["variant"],os.sep))
 
-        new_opf = ""
+            new_opf = ""
 
-        with open("content.opf","r") as opf:
-            for line in opf:
-                line = line.rstrip()
+            with open("content.opf","r") as opf:
+                for line in opf:
+                    line = line.rstrip()
 
-                if "item" in line:
-                    tab_item = line.split("<")[0]
+                    if "item" in line:
+                        tab_item = line.split("<")[0]
 
-                if '</manifest>' in line:
-                    if filetype["manifest"]:
-                        new_opf += "\n{0}{1}".format(tab_item,manifest)
-                        new_opf += "\n</manifest>"
+                    if '</manifest>' in line:
+                        if filetype["manifest"]:
+                            new_opf += "\n{0}{1}".format(tab_item,manifest)
+                            new_opf += "\n</manifest>"
+                        else:
+                            new_opf += "\n</manifest>"
+                    elif '</spine>' in line:
+                        if filetype["spine"]:
+                            new_opf += "\n{0}{1}".format(tab_item,spine)
+                            new_opf += "\n</spine>"
+                        else:
+                            new_opf += "\n</spine>"
                     else:
-                        new_opf += "\n</manifest>"
-                elif '</spine>' in line:
-                    if filetype["spine"]:
-                        new_opf += "\n{0}{1}".format(tab_item,spine)
-                        new_opf += "\n</spine>"
-                    else:
-                        new_opf += "\n</spine>"
-                else:
-                    if line.startswith("<?xml"):
-                        new_opf += "{0}".format(line)
-                    else:
-                        new_opf += "\n{0}".format(line)
+                        if line.startswith("<?xml"):
+                            new_opf += "{0}".format(line)
+                        else:
+                            new_opf += "\n{0}".format(line)
 
-        os.remove("content.opf")
+            os.remove("content.opf")
 
-        with open("content.opf","w") as opf:
-            opf.write(new_opf)
-
-    def epub2_predefined_append_to_opf(self,predef):
-        if predef == "TocPage":
-            self.epub2_append_to_opf(
-                "xhtml",
-                path(
-                    "{0}/OEBPS/Text/TableOfContents.xhtml".format(
-                        self.temporary_epub["path"]
-                    )
-                ),
-                "Text/TableOfContents.xhtml"
-            )
+            with open("content.opf","w") as opf:
+                opf.write(new_opf)
 
             return True
 
-        return False
+        else:
+            return False
+
+    def epub2_predefined_append_to_opf(self,predef):
+        if self._have_correct_oebps_variant():
+            if predef == "TocPage":
+                self.epub2_append_to_opf(
+                    "xhtml",
+                    path(
+                        "{0}/{1}/Text/TableOfContents.xhtml".format(
+                            self.temporary_epub["path"],
+                            self.oebps["variant"]
+                        )
+                    ),
+                    "Text/TableOfContents.xhtml"
+                )
+
+                return True
+
+            return False
+        else:
+            return False
 
     # Table of contents methods
 
@@ -372,8 +506,8 @@ class EPUB:
 
         text_dir = None
 
-        if location == "OEBPS/Text/":
-            text_dir = "{0}/OEBPS/Text/".format(self.temporary_epub["path"])
+        if location == "{0}/Text/".format(self.oebps["variant"]):
+            text_dir = "{0}/{1}/Text/".format(self.temporary_epub["path"],self.oebps["variant"])
 
         if text_dir is not None:
             text_files = []
@@ -409,8 +543,8 @@ class EPUB:
 
         text_dir = None
 
-        if location == "OEBPS/Text/":
-            text_dir = "{0}/OEBPS/Text/".format(self.temporary_epub["path"])
+        if location == "{0}/Text/".format(self.oebps["variant"]):
+            text_dir = "{0}/{1}/Text/".format(self.temporary_epub["path"],self.oebps["variant"])
 
         if text_dir is not None:
             with open("{0}TableOfContents.xhtml".format(text_dir),"w") as tocf:
@@ -490,3 +624,11 @@ class TocParser(HTMLParser):
 
 def ask_for_refresh():
     print "Refresh the EPUB content by selecting EPUB buffer and typing :edit"
+
+def get_current_line(vim):
+    return vim.current.buffer[vim.current.window.cursor[0]-1]
+
+def get_user_input(vim,prompt):
+    vim.command('let g:EpubMode_Prompt = input("{0} ")'.format(prompt))
+    print " "
+    return vim.eval("g:EpubMode_Prompt")

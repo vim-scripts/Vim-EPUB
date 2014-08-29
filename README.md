@@ -78,8 +78,8 @@ In the state of the art, vim-epub can:
 - Add medias (images, etc.).
 - Make your OS open the EPUB with its selected reader.
 - Provide a menu to easily link XHTML and CSS contents.
+- Rename a file embedded into the EPUB.
 
-## Todo
+## Contribute!
 
-1. Improve `AddMedia` command.
-2. `MakeTOC`, a command to make the toc.ncx
+See TODO.md.

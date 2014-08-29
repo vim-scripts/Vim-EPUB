@@ -7,10 +7,12 @@ CONTENTS                                                               *vim-epub
    2. Pré-requis ........................................ |vepub-requirements|
 
    3. Usage .................................................... |vepub-usage|
-      3.1 Commandes ......................................... |vepub-commands|
-      3.2 Extras .............................................. |vepub-extras|
+      3.1 Champ d’application des commandes .................... |vepub-field|
+      3.2 Commandes ......................................... |vepub-commands|
+      3.3 Extras .............................................. |vepub-extras|
 
    4. Licence ................................................ |vepub-licence|
+   5. Remerciements ................................. |vepub-acknowledgements|
 
 ===============================================================================
 1. Introduction                                                     *vepub-intro*
@@ -47,28 +49,69 @@ unzip est également requis.
 vim-epub ne définit aucun mapping. Libre à vous de choisir les commandes à
 mapper.
 
+Certaines commandes - typiquement celles  qui ajoutent des fichiers -
+nécessitent, pour rendre visible leur  action, de taper ':edit' pour
+mettre à jour le tampon du contenu de l’EPUB. Le marqueur {NeedRefresh}
+les signale.
+
 -------------------------------------------------------------------------------
-3.1 Commandes                                                    *vepub-commands*
+3.1 Champ d’application des commandes                               *vepub-field*
+
+Vim-EPUB tire parti de zip.vim pour ouvrir et modifier un fichier EPUB. Aussi
+à l’ouverture d’un fichier, le tampon du contenu du fichier EPUB est-il fourni
+par zip.vim.
+
+Le contenu d’un tel tampon ressemble à ceci:
+
+	zip.vim version v27
+	" Browsing zipfile /home/badaboum/test.epub
+	" Select a file with cursor and press ENTER
+
+	mimetype
+	OEBPS/Images/Foo.png
+	OEBPS/toc.ncx
+	OEBPS/content.opf
+	OEBPS/Styles/Style.css
+	OEBPS/Text/Text.xhtml
+	META-INF/container.xml
+
+Certaines commandes de Vim-EPUB sont uniquement utilisables dans le tampon du
+contenu d’un  fichier EPUB. Le marqueur {OnEPUBContentsBuffer} les signale.
+
+Certaines commandes de Vim-EPUB sont uniquement utilisables dans des tampons
+de fichiers textes (xhtml…). Le marqueur {OnTextBuffer} les signale.
+
+Enfin, certaines commandes de Vim-EPUB sont utilisables dans n’importe quel tampon.
+Le marqueur {OnAnyBuffer} les signale.
+
+-------------------------------------------------------------------------------
+3.2 Commandes                                                    *vepub-commands*
 
 AddNewPage ~
+
+{OnAnyBuffer} {NeedRefresh}
 
 Usage:
 	:AddNewPage
 
 Demande le nom d’une nouvelle page vide (xhtml) et l’ajoute au fichier EPUB.
-N’oubliez pas de taper ':edit' pour mettre à jour le tampon du contenu de
-l’EPUB.
+
 
 AddNewCSS ~
+
+{OnAnyBuffer} {NeedRefresh}
 
 Usage:
 	:AddNewCSS
 
+	{OnAnyBuffer}
+
 Demande le nom d’une feuille de style vide (css) et l’ajoute au fichier EPUB.
-N’oubliez pas de taper ':edit' pour mettre à jour le tampon du contenu de
-l’EPUB.
+
 
 AddMedia ~
+
+{OnAnyBuffer} {NeedRefresh}
 
 Usage:
 	:AddMedia
@@ -76,14 +119,43 @@ Usage:
 Demande le chemin d’un media existant et l’ajoute au fichier EPUB.
 Le média peut être une image, du (X)HTML, CSS, des polices d’écriture…
 
+
 AddTocPage ~
+
+{OnAnyBuffer} {NeedRefresh}
 
 Usage:
         :AddTocPage
 
 Ajoute une table des matières (TableOfContents.xhtml) dans le fichier EPUB.
 
+
+RenameFile ~
+
+{OnEPUBContentsBuffer} {NeedRefresh}
+
+Usage:
+	:RenameFile
+
+Renomme  le fichier  correspondant à  la ligne  en cours  et corrige
+toutes les  références à  ce fichier dans  les autres  fichiers de
+l’EPUB.
+
+
+BackupEPUB ~
+
+{OnAnyBuffer}
+
+Usage:
+	:BackupEPUB
+
+Crée une copie de sauvegarde du fichier EPUB, nommée x.epub.user.bak,
+x étant le nom donné à la copie de sauvegarde par l’utilisateur.
+
+
 LinkToCss ~
+
+{OnTextBuffer}
 
 Usage:
         :LinkToCss
@@ -91,7 +163,10 @@ Usage:
 Demande à  l’utilisateur le  fichier CSS  (inclus dans  le fichier
 EPUB) à utiliser et ajoute sa définition à la ligne courante.
 
+
 OpenReader ~
+
+{OnAnyBuffer}
 
 Usage:
         :OpenReader
@@ -100,7 +175,7 @@ Ouvre le fichier EPUB dans le liseur de livres numériques défini par le
 système.
 
 -------------------------------------------------------------------------------
-3.2 Extras                                                         *vepub-extras*
+3.3 Extras                                                         *vepub-extras*
 
 Snippets ~
 
@@ -112,5 +187,13 @@ meilleure expérience d’édition.
 4. Licence                                                        *vepub-licence*
 
 vim-epub est publié sous la licence GNU General Public version 3 (GPL v3).
+
+===============================================================================
+5. Remerciements                                         *vepub-acknowledgements*
+
+À Mikhail  Gusarov pour path.py,  un wrapper autour des  modules os,
+shutil, tempfile…
+
+    https://github.com/jaroco/path.py
 
 vim:tw=78:ts=8:ft=help:norl:spelllang=fr:

@@ -28,11 +28,6 @@ from vim import *
 from vim_epub import *
 from vepub_skels import *
 
-def get_user_input(prompt):
-    vim.command('let g:EpubMode_Prompt = input("{0} ")'.format(prompt))
-    print " "
-    return vim.eval("g:EpubMode_Prompt")
-
 epubs = EPUB(vim.buffers)
 
 if epubs.valid:
@@ -40,7 +35,7 @@ if epubs.valid:
     page_set = False
 
     while not page_set:
-        page_name = get_user_input("New page name?")
+        page_name = get_user_input(vim,"New page name?")
 
         if epubs.has_file(path(page_name+".xhtml")):
             print "This page already exists. Use another page name."
@@ -71,7 +66,7 @@ if epubs.valid:
 
         page_path = None
 
-        if add_in == "OEBPS/Text/":
+        if add_in == "{0}/Text/".format(epubs.oebps["variant"]):
             page_path = "{0}{1}{2}{1}{3}.xhtml".format(
                 epubs.temporary_epub["path"],
                 os.sep,
@@ -124,11 +119,6 @@ from vim import *
 from vim_epub import *
 from vepub_skels import *
 
-def get_user_input(prompt):
-    vim.command('let g:EpubMode_Prompt = input("{0} ")'.format(prompt))
-    print " "
-    return vim.eval("g:EpubMode_Prompt")
-
 epubs = EPUB(vim.buffers)
 
 if epubs.valid:
@@ -136,7 +126,7 @@ if epubs.valid:
     css_set = False
 
     while not css_set:
-        css_name = get_user_input("New CSS stylesheet name?")
+        css_name = get_user_input(vim,"New CSS stylesheet name?")
 
         if epubs.has_file(path(css_name+".css")):
             print "This CSS stylesheet already exists. Use another name."
@@ -167,14 +157,21 @@ if epubs.valid:
 
         css_path = None
 
-        if add_in == "OEBPS/Styles/":
+        if epubs.oebps["used"]:
+            if "Style" in add_in:
+                if "Styles" in add_in:
+                    css_variant = "Styles"
+                else:
+                    css_variant = "Style"
+
+        if add_in == "{0}/{1}/".format(epubs.oebps["variant"],css_variant):
             css_path = "{0}{1}{2}{1}{3}.css".format(
                 epubs.temporary_epub["path"],
                 os.sep,
                 add_in,
                 css_name
             )
-            in_epub_path = "Styles{0}{1}.css".format(os.sep,css_name)
+            in_epub_path = "{0}{1}{2}.css".format(css_variant,os.sep,css_name)
 
         # Write the new css
         if css_path is not None:
@@ -221,18 +218,13 @@ from vim import *
 
 from vim_epub import *
 
-def get_user_input(prompt):
-    vim.command('let g:EpubMode_Prompt = input("{0} ")'.format(prompt))
-    print " "
-    return vim.eval("g:EpubMode_Prompt")
-
 epubs = EPUB(vim.buffers)
 
 if epubs.valid:
     # Obtention du chemin du nouveau media -----------------------------------
     media_set = False
     while not media_set:
-        raw_media_path = get_user_input("Media path?")
+        raw_media_path = get_user_input(vim,"Media path?")
 
         media_path = path(raw_media_path)
         #media_name = media_path.basename()
@@ -285,11 +277,11 @@ if epubs.valid:
 
         in_epub_path = None
 
-        if "OEBPS" in add_in:
+        if epubs.oebps["variant"] in add_in:
             # TODO add audio,video categories
 
             valid = False
-            for mt in ["Text","Images","Styles","Fonts","Misc"]:
+            for mt in ["Text","Images","Style","Styles","Fonts","Misc"]:
                 if mt in add_in:
                     valid = True
 
@@ -385,11 +377,6 @@ python << endOfPython
 from vim import *
 from vim_epub import *
 
-def get_user_input(prompt):
-    vim.command('let g:EpubMode_Prompt = input("{0} ")'.format(prompt))
-    print " "
-    return vim.eval("g:EpubMode_Prompt")
-
 epubs = EPUB(vim.buffers)
 
 if epubs.valid:
@@ -398,6 +385,13 @@ if epubs.valid:
     if available_css_files:
         location,make_dir = epubs.guess_destination("css")
 
+        if epubs.oebps["used"]:
+            if "Style" in add_in:
+                if "Styles" in location:
+                    css_variant = "Styles"
+                else:
+                    css_variant = "Style"
+
         if len(available_css_files) == 1:
             css = available_css_files[0]
         else:
@@ -405,7 +399,7 @@ if epubs.valid:
 
             count = 1
             for css_file in available_css_files:
-                if location == "OEBPS/Styles/":
+                if location == "{0}/{1}/".format(epubs.oebps["variant"],css_variant):
                     ctext = "/".join(css_file.split("/")[2:])
                     print "  {0} - {1}".format(count,ctext)
                 else:
@@ -415,7 +409,7 @@ if epubs.valid:
 
             print "  C - Cancel"
 
-            choice = get_user_input("Select?")
+            choice = get_user_input(vim,"Select?")
 
             if choice.lower() == "c":
                 css = False
@@ -426,8 +420,8 @@ if epubs.valid:
     if css:
         css_href = None
 
-        if location == "OEBPS/Styles/":
-            css_href = "../Styles/{0}".format(css.split("/")[-1])
+        if location == "{0}/{1}/".format(epubs.oebps["variant"],css_variant):
+            css_href = "../{0}/{1}".format(css_variant,css.split("/")[-1])
 
         if css_href is not None:
             link_text = '<link href="{0}" rel="stylesheet" type="text/css"/>'.format(css_href)
@@ -436,14 +430,103 @@ if epubs.valid:
 endOfPython
 endfunction
 
+function! RenameFile()
+python << endOfPython
+from vim import *
+from vim_epub import *
+
+epubs = EPUB(vim.buffers)
+
+if epubs.valid:
+    # Get vim current line
+    old_filename = get_current_line(vim)
+
+    # Get the new filename -----------------------------
+    new_filename = get_user_input(
+        vim,
+        "New filename of {0}?".format(
+            old_filename.split("/")[-1]
+        )
+    )
+
+    new_filename = "{0}/{1}".format(
+        "/".join(old_filename.split("/")[:-1]),
+        new_filename
+    )
+    #---------------------------------------------------
+
+    # Adds the file extension if not added in the prompt
+    old_file_ext = old_filename.split(".")[-1]
+
+    if not new_filename.endswith(old_file_ext):
+        # Only  if the file  has NO  extension (user can  use another
+        # extension)
+        if len(new_filename.split(".")) == 1:
+            new_filename = "{0}.{1}".format(new_filename,old_file_ext)
+    #---------------------------------------------------
+
+    print "New filename:",new_filename
+
+    have_tmp_path = epubs.make_working_dir()
+
+    if have_tmp_path:
+        epubs.extract()
+
+        renamed = epubs.rename_file(old_filename,new_filename)
+
+        if renamed:
+            # Modifies the references to the renamed file in the other files
+            # of the EPUB.
+            epubs.replace_string(["xhtml","html"],old_filename,new_filename)
+
+            # Backup the old EPUB
+            epubs.backup()
+            # Recompression of the EPUB from the temporary work folder
+            success = epubs.recompress()
+
+            if success:
+                # Replace the old epub file with the new and clean the temporary
+                # work folder.
+                epubs.move_new_and_clean()
+
+                # Rechargement du fichier EPUB __________________________________
+                vim.command(
+                    """echom 'File renamed to {0}.'""".format(new_filename)
+                )
+                ask_for_refresh()
+endOfPython
+endfunction
+
+function! BackupEPUB()
+python << endOfPython
+from vim import *
+from vim_epub import *
+
+epubs = EPUB(vim.buffers)
+if epubs.valid:
+    backup_name = get_user_input(vim,"Backup name?")
+
+    if backup_name:
+        epubs.backup(backup_name)
+endOfPython
+endfunction
+
 "--- Vim commands -------------------------------------------------------------
 
+" Add generated/empty medias
 command! AddEmptyPage call AddNewPage()
 command! AddEmptyCSS call AddNewCSS()
 command! AddTocPage call AddTocPage()
 
+" Add existing medias
 command! AddMedia call AddNewMedia()
 
+" Edition commands
 command! LinkToCss call LinkPageToCSS()
 
+" Files manipulation
+command! RenameFile call RenameFile()
+command! BackupEPUB call BackupEPUB()
+
+" Others
 command! OpenReader call OpenReader()
