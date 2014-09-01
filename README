@@ -17,4 +17,6 @@ With Vim-EPUB, you can:
 − Make your OS open the EPUB with its selected reader.
 − Provide a menu to easily link XHTML and CSS contents.
 
+See https://github.com/etnadji/vim-epub/wiki/Features for a complete list.
+
 Please note that is my first plugin. Advices, comments welcomed.

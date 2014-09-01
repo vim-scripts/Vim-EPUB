@@ -5,12 +5,20 @@
 " | By Etienne Nadji <etnadji@eml.cc> |
 " +-----------------------------------+
 
+"--- Base actions / options ---------------------------------------------------
+
+au BufReadCmd *.epub call zip#Browse(expand("<amatch>"))
+
+let g:VimEPUB_DiffSplit = "horizontal"
+let g:VimEPUB_OpenCommand = "None"
+
+"--- Python imports -----------------------------------------------------------
+
 python import sys
 python import vim
 python sys.path.append(vim.eval('expand("<sfile>:h")'))
 
-"--- Sorry Windows users ! ----------------------------------------------------
-
+" Warning for Windows users
 python import platform
 python if platform.system() == "Windows": vim.command("""echom 'Vim-EPUB does not work under Windows.'""")
 
@@ -103,7 +111,7 @@ if epubs.valid:
                     page_name+".xhtml"
                 )
             )
-            print "Refresh the EPUB content by selecting EPUB buffer and typing :edit"
+            ask_for_refresh()
 endOfPython
 endfunction
 
@@ -363,17 +371,19 @@ endfunction
 
 function! OpenReader()
 python << endOfPython
+from __future__ import unicode_literals
 from vim import *
 from vim_epub import *
 
 epubs = EPUB(vim.buffers)
 if epubs.valid:
-    epubs.open_reader()
+    epubs.open_reader(vim)
 endOfPython
 endfunction
 
 function! LinkPageToCSS()
 python << endOfPython
+from __future__ import unicode_literals
 from vim import *
 from vim_epub import *
 
@@ -432,6 +442,7 @@ endfunction
 
 function! RenameFile()
 python << endOfPython
+from __future__ import unicode_literals
 from vim import *
 from vim_epub import *
 
@@ -499,6 +510,7 @@ endfunction
 
 function! BackupEPUB()
 python << endOfPython
+from __future__ import unicode_literals
 from vim import *
 from vim_epub import *
 
@@ -508,6 +520,199 @@ if epubs.valid:
 
     if backup_name:
         epubs.backup(backup_name)
+endOfPython
+endfunction
+
+function! DiffEPUB()
+python << endOfPython
+from vim import *
+from vim_epub import *
+
+epubs = EPUB(vim.buffers)
+
+if epubs.valid:
+    epub1_name = epubs.original_epub["path"].basename()
+
+    print "Actual EPUB:",epub1_name
+
+    epub2 = get_user_input(vim,"Compare with?")
+    success = epubs.open_diff(vim,epub2)
+
+    if not success:
+        print "{0} is not a file/doesn't exist".format(epub2.realpath())
+endOfPython
+endfunction
+
+function! DiffLastEPUB()
+python << endOfPython
+from __future__ import unicode_literals
+
+from vim import *
+from vim_epub import *
+
+epubs = EPUB(vim.buffers)
+
+if epubs.valid:
+    epub2 = "{0}.vepub.bak".format(epubs.original_epub["path"].abspath())
+    success = epubs.open_diff(vim,epub2)
+
+    if not success:
+        print "{0} is not a file/doesn't exist".format(epub2.realpath())
+endOfPython
+endfunction
+
+function! MergeFiles()
+python << endOfPython
+from __future__ import unicode_literals
+
+import os
+import copy
+
+from vim import *
+from vim_epub import *
+
+epubs = EPUB(vim.buffers)
+
+if epubs.valid:
+    have_tmp_path = epubs.make_working_dir()
+
+    if have_tmp_path:
+        epubs.extract()
+
+        f1 = os.sep.join(get_current_line(vim).split("/"))
+        f2 = os.sep.join(get_next_line(vim).split("/"))
+        f1_name = copy.deepcopy(f1)
+        f2_name = copy.deepcopy(f2)
+
+        f1 = "{0}{1}".format(epubs.temporary_epub["path"],f1)
+        f2 = "{0}{1}".format(epubs.temporary_epub["path"],f2)
+
+        output_selected = False
+        output_file = None
+
+        while not output_selected:
+            print "Merge {0} into:\n".format(f2_name)
+            print "1. {0}".format(f1_name)
+            print "2. A new file"
+            print "3. Cancel\n"
+
+            choice = get_user_input(vim,"Choice?")
+
+            try:
+                choice = int(choice)
+
+                output_selected = True
+                merge = True
+
+                #--- Merge F1 and F2 into F1… ----------------------------------
+
+                if choice == 1:
+                    output_file = f1
+                    new_file = False
+
+                #--- … or Merge F1 and F2 into a new file… ---------------------
+
+                if choice == 2:
+                    correct = False
+                    new_file = True
+
+                    # Enter the new page name ----------------------------------
+                    while not correct:
+                        page_name = get_user_input(vim,"New page name?")
+
+                        if not page_name.endswith(".xhtml"):
+                            page_name += ".xhtml"
+
+                        if not epubs.has_file(path(page_name)):
+                            correct = True
+
+                    # Find the appropriate folder in the EPUB file for the new page.
+                    add_in,make_dir = epubs.guess_destination("text")
+
+                    if make_dir:
+                        try:
+                            os.mkdir(
+                                "{0}{1}".format(
+                                    epubs.temporary_epub["path"],
+                                    add_in
+                                )
+                            )
+                        except OSError:
+                            pass
+
+                    page_path = None
+
+                    if add_in == "{0}/Text/".format(epubs.oebps["variant"]):
+                        page_path = "{0}{1}{2}".format(
+                            epubs.temporary_epub["path"],
+                            add_in,
+                            page_name
+                        )
+                        in_epub_path = "Text{0}{1}".format(os.sep,page_name)
+
+                    output_file = page_path
+
+                #--- … or cancel -----------------------------------------------
+
+                if choice == 3:
+                    epubs.remove_temp_dir()
+                    merge,output_selected = False,True
+
+            except ValueError:
+                pass
+
+        if merge:
+            temp_merged_file = epubs.temporary_epub["path"] + "tmp_html.html"
+
+            success = merge_html(f1,f2,temp_merged_file)
+
+            if success:
+                # --- Operations on files --------------------------------------
+                if new_file:
+                    answered = False
+
+                    while not answered:
+                        print "Do Vim-EPUB have to remove merged files?"
+
+                        choice = get_user_input(vim,"[yes/no]")
+
+                        if choice.lower()[0] in ["y","n"]:
+                            if choice.lower()[0] == "y":
+                                remove_merged = True
+                            if choice.lower()[0] == "n":
+                                remove_merged = False
+                            answered = True
+
+                    os.chdir(epubs.temporary_epub["path"])
+                    shutil.move(temp_merged_file,output_file)
+
+                    if remove_merged:
+                        os.remove(f1)
+                        os.remove(f2)
+                else:
+                    os.remove(f1)
+                    os.remove(f2)
+                    os.chdir(epubs.temporary_epub["path"])
+                    shutil.move(temp_merged_file,f1)
+
+                # --- Make the new EPUB and ends -------------------------------
+
+                recompress = epubs.recompress()
+
+                if recompress:
+                    # Replace the old epub file with the new and clean the temporary
+                    # work folder.
+                    epubs.move_new_and_clean()
+
+                    # Rechargement du fichier EPUB __________________________________
+                    vim.command(
+                        """echom 'Files {0} and {1} merged in {2}.'""".format(
+                            f1_name,f2_name,output_file
+                        )
+                    )
+                    ask_for_refresh()
+
+
 endOfPython
 endfunction
 
@@ -527,6 +732,9 @@ command! LinkToCss call LinkPageToCSS()
 " Files manipulation
 command! RenameFile call RenameFile()
 command! BackupEPUB call BackupEPUB()
+command! DiffEPUB call DiffEPUB()
+command! DiffLastEPUB call DiffLastEPUB()
+command! MergeFiles call MergeFiles()
 
 " Others
 command! OpenReader call OpenReader()

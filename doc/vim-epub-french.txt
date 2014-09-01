@@ -17,14 +17,6 @@ CONTENTS                                                               *vim-epub
 ===============================================================================
 1. Introduction                                                     *vepub-intro*
 
-Cet âne suffira pour vous aider.
-
-            ^__^
-            (oo)\_______
-            (__)\       )\/\
-                ||----w |
-                ||     ||
-
 Des versions de ce fichier d’aide en d’autres langues sont disponibles dans le
 dossier doc/ de ce greffon.
 
@@ -142,6 +134,18 @@ toutes les  références à  ce fichier dans  les autres  fichiers de
 l’EPUB.
 
 
+MergeFiles ~
+
+{OnEPUBContentsBuffer} {NeedRefresh}
+
+Usage:
+	:MergeFiles
+
+Fusionne les fichiers correspondants à la ligne en cours et à la ligne
+suivante soit dans le fichier correspondant à la ligne en cours, soit dans un
+tout autre fichier.
+
+
 BackupEPUB ~
 
 {OnAnyBuffer}
@@ -151,6 +155,42 @@ Usage:
 
 Crée une copie de sauvegarde du fichier EPUB, nommée x.epub.user.bak,
 x étant le nom donné à la copie de sauvegarde par l’utilisateur.
+
+
+DiffEPUB ~
+
+{OnAnyBuffer}
+
+Usage:
+        :DiffEPUB
+
+Options:
+        g:VimEPUB_DiffSplit
+            Style de split utilisé
+
+            "horizontal" pour un split horizontal (sp) (valeur par default)
+            "vertical" pour un split vertical (vsp)
+
+Compare l’EPUB en cours d’édition avec un autre, ayant le chemin donné par
+l’utilisateur.
+
+
+DiffLastEPUB ~
+
+{OnAnyBuffer}
+
+Usage:
+        :DiffLastEPUB
+
+Options:
+        g:VimEPUB_DiffSplit
+            Style de split utilisé
+
+            "horizontal" pour un split horizontal (sp) (valeur par default)
+            "vertical" pour un split vertical (vsp)
+
+Compare l’EPUB en cours d’édition avec la dernière copie de sauvegarde
+effectuée par Vim-EPUB.
 
 
 LinkToCss ~
@@ -170,6 +210,14 @@ OpenReader ~
 
 Usage:
         :OpenReader
+
+Options:
+	g:VimEPUB_OpenCommand
+	     Programme  utilisé  pour  ouvrir l’EPUB  et  outrepasser  les
+	     préférences du système.
+
+	     "none" ne pas outrepasser les préférences du système
+		    (valeur par défaut)
 
 Ouvre le fichier EPUB dans le liseur de livres numériques défini par le
 système.
@@ -195,5 +243,15 @@ vim-epub est publié sous la licence GNU General Public version 3 (GPL v3).
 shutil, tempfile…
 
     https://github.com/jaroco/path.py
+
+À Nic West pour epubdiff, un générateur de diff pour deux fichiers EPUB.
+
+    https://github.com/nicwest/epubdiff
+    http://www.nic-west.com/
+
+À Kumar McMillan, pour sa présentation éclairante sur Python et Unicode,
+source régulière de confusion.
+
+    http://farmdev.com/talks/unicode/
 
 vim:tw=78:ts=8:ft=help:norl:spelllang=fr:

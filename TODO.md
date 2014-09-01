@@ -2,11 +2,9 @@
 
 ## General
 
-1. Improve _AddMedia_ command.
-2. _MakeTOC_, a command to make the toc.ncx (EPUB2) and/or toc.xhtml (EPUB3).
-3. Integration with [epubdiff](https://github.com/nicwest/epubdiff)
-   1. _DiffLast_ command to diff the current epub and the last backup epub made by Vim-EPUB
-      - The command will open a buffer with the epubdiff difflog (+ syntax color)
+1. *Use unicode in all the user inputs*
+2. Improve _AddMedia_ command.
+3. _MakeTOC_, a command to make the toc.ncx (EPUB2) and/or toc.xhtml (EPUB3).
 
 ## EPUB 2 Support
 

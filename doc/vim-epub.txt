@@ -17,14 +17,6 @@ CONTENTS                                                               *vim-epub
 ===============================================================================
 1. Intro                                                            *vepub-intro*
 
-A cow may also help.
-
-            ^__^
-            (oo)\_______
-            (__)\       )\/\
-                ||----w |
-                ||     ||
-
 Versions of this help file in other languages are available in the doc/ folder
 of this plugin.
 
@@ -138,6 +130,17 @@ Rename the  file on the  current line and fix  all the links  to this
 renamed file on the others files of the EPUB.
 
 
+MergeFiles ~
+
+{OnEPUBContentsBuffer} {NeedRefresh}
+
+Usage:
+	:MergeFiles
+
+Merge the files on the current and next lines, either in the file on the
+current line or in another filepath given by the user.
+
+
 BackupEPUB ~
 
 {OnAnyBuffer}
@@ -148,6 +151,40 @@ Usage:
 
 Make a backup  file of the EPUB named x.epub.user.bak  where x is the
 name given to the backup.
+
+
+DiffEPUB ~
+
+{OnAnyBuffer}
+
+Usage:
+        :DiffEPUB
+
+Options:
+        g:VimEPUB_DiffSplit
+            Split style used
+
+            "horizontal" for an horizontal split (sp) (default)
+            "vertical" for a vertical split (vsp)
+
+Prompt the user for a EPUB file path and compares the current EPUB to it.
+
+
+DiffLastEPUB ~
+
+{OnAnyBuffer}
+
+Usage:
+        :DiffLastEPUB
+
+Options:
+        g:VimEPUB_DiffSplit
+            Split style used
+
+            "horizontal" for an horizontal split (sp) (default)
+            "vertical" for a vertical split (vsp)
+
+Compares the current EPUB to the last backup made by Vim-EPUB.
 
 
 LinkToCss ~
@@ -168,6 +205,13 @@ OpenReader ~
 
 Usage:
         :OpenReader
+
+Options:
+	g:VimEPUB_OpenCommand
+	     Program used to open the EPUB, overriding the OS settings.
+
+	     "none" the command don't override the OS settings.
+		    (default)
 
 Open the EPUB file in the system-defined ebook viewer.
 
@@ -193,5 +237,15 @@ To  Mikhail  Gusarov  for  path.py,  a  wrapper  around  os,  shutil,
 tempfile…
 
     https://github.com/jaroco/path.py
+
+To Nic West for epubdiff, a diff checker for two EPUB files.
+
+    https://github.com/nicwest/epubdiff
+    http://www.nic-west.com/
+
+To Kumar McMillan, for his brilliant talk about Python and Unicode
+- a subject that made me regularly mad.
+
+    http://farmdev.com/talks/unicode/
 
 vim:tw=78:ts=8:ft=help:norl:spelllang=en:

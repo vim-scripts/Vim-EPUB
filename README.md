@@ -3,19 +3,11 @@
 A Vim plugin for EPUB edition.
 Released under GNU GPL 3 (check LICENSE file).
 
-With Vim, you can already edit an epub file:
+With Vim, you [can already edit an epub file](https://github.com/etnadji/vim-epub/wiki/How-Vim-EPUB-open-EPUB-files-(and-why-it-can’t-work-under-Windows))  and modify it's content, and save, and so on.
 
-`au BufReadCmd *.epub call zip#Browse(expand("<amatch>"))`
-
-And modify it's content, and save, and so on.
-
-But you can't add files.
-Tidy the code.
-Make the table of contents. *Oh wait, you can. But that’s boring.*
+But the EPUB file is read-only: you can't add files and do many other things.
 
 **vim-epub** is here to make you free of stupid tasks like extracting the EPUB, add the file you want to add, recompress in 2-steps the EPUB, re-open Vim.
-
-In fact, Vim-EPUB does this for you.
 
 ## Installation
 
@@ -31,27 +23,21 @@ In fact, Vim-EPUB does this for you.
 
 **Short version:** Vim-EPUB _can’t work under Microsoft Windows_.
 
-**Long version**: To work, vim-epub needs a functionnal zip.vim, wich is a default vim plugin. Sadly, zip.vim only works in unices, like BSDs,GNU/Linux distributions and Mac OS.
+**Long version**:  See [here](https://github.com/etnadji/vim-epub/wiki/How-Vim-EPUB-open-EPUB-files-(and-why-it-can’t-work-under-Windows)).
 
 ### Vim
 
-You need a copy of Vim compiled with python support. To check if your copy has this:
-
-`:version`
-
-If you have '+python' in the output, it's alright. Otherwise, install another version of Vim.
+You need a copy of Vim compiled with python support.
 
 ### Needed programs
 
-You need the `unzip` in order to make zip.vim (built-in) work. It is frequently installed by default on newbies distributions like Ubuntu, Linux Mint…
+You need the `unzip` programm in order to make zip.vim (built-in) work. It is frequently installed by default on newbies distributions like Ubuntu, Linux Mint…
 
 In Debian-like GNU/Linux distributions:
 
 `sudo apt-get install unzip`
 
 ### Plugin managers
-
-Use your plugin manager of choice.
 
 #### [Vundle](https://github.com/gmarik/vundle)
   - Add `Bundle 'etnadji/vim-epub'` or `Bundle 'https://github.com/etnadji/vim-epub'` to .vimrc
@@ -68,17 +54,18 @@ Use your plugin manager of choice.
   - Add `Plug 'https://github.com/etnadji/vim-epub'` to .vimrc
   - Run `:PlugInstall`
 
-## State of the art
+## Notable features
 
-In the state of the art, vim-epub can:
-
-- Add an empty page (XHTML).
-- Add an empty CSS stylesheet.
+- Adding medias (XHTML, CSS, fonts, images…)
 - Add a _Table of contents_ page.
-- Add medias (images, etc.).
-- Make your OS open the EPUB with its selected reader.
 - Provide a menu to easily link XHTML and CSS contents.
-- Rename a file embedded into the EPUB.
+- Merge, rename files embedded in the EPUB
+- Check the differences between the current EPUB and another.
+
+### And more:
+
+The full list of features / commands is available on the [wiki](https://github.com/etnadji/vim-epub/wiki/Features) or doc files ([en](https://github.com/etnadji/vim-epub/blob/master/doc/vim-epub.txt) /[fr](https://github.com/etnadji/vim-epub/blob/master/doc/vim-epub-french.txt)):
+`:help vim-epub.txt` or `:help vim-epub-french.txt`
 
 ## Contribute!
 

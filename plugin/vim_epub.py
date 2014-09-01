@@ -20,6 +20,7 @@ from path import path
 
 from vepub_skels import *
 
+import epubdiff
 
 class EPUB:
     def __init__(self,vim_buffers=None):
@@ -229,9 +230,12 @@ class EPUB:
         os.remove(old_epub)
         shutil.move(new_epub,old_epub)
 
-        shutil.rmtree(self.temporary_epub["path"])
+        self.remove_temp_dir()
 
         return True
+
+    def remove_temp_dir(self):
+        shutil.rmtree(self.temporary_epub["path"])
 
     def _have_correct_oebps_variant(self):
         if self.oebps["variant"]:
@@ -566,17 +570,92 @@ class EPUB:
 
     # Other methods
 
-    def open_reader(self):
-        epub_path = unicode(self.original_epub["patho"])
+    def open_reader(self,vim):
+        """Open the EPUB reader defined by the OS"""
+
+        custom_command = vim.eval("g:VimEPUB_OpenCommand")
+        if custom_command.lower() == "none":
+            custom_command = False
+
+        epub_path = unicode(self.original_epub["path"])
 
         if platform.system() == "Linux" or "bsd" in platform.system().lower():
-            os.popen('xdg-open "{0}"'.format(epub_path)).read()
+            if custom_command:
+                os.popen('{0} "{1}"'.format(custom_command,epub_path)).read()
+            else:
+                os.popen('xdg-open "{0}"'.format(epub_path)).read()
+
             return True
+
         elif platform.system() == "Darwin":
-            os.system('open {0}'.format(epub_path))
+            if custom_command:
+                os.system('open -a "{0}" {1}'.format(custom_command,epub_path))
+            else:
+                os.system('open {0}'.format(epub_path))
+
             return True
+
         elif platform.system() == "Windows":
             return False
+
+        else:
+            return False
+
+    def open_diff(self,vim,epub2):
+        """
+        Use epubdiff to  produce a diff between current  EPUB and the
+        EPUB  with  epub2  filepath  and  open a  vim  split  to show
+        this diff.
+        """
+
+        epub2 = path(epub2)
+
+        if epub2.isfile():
+            # Try to remove the diff file if it already exists
+            try:
+                os.remove(".vepub.diff")
+            except OSError,err:
+                if err.errno == 2:
+                    pass
+
+            # Make the diff
+            checker = epubdiff.EpubDiff(
+                    self.original_epub["path"].realpath(),
+                    epub2.realpath()
+                    )
+            checker.check()
+
+            # Writes it in a file
+            with open(".vepub.diff","w") as df:
+                first = True
+                for diff_elem in checker.difflog:
+                    for dde in diff_elem:
+                        if isinstance(dde,tuple):
+                            if first:
+                                df.write("{0}: ".format(dde[1]))
+                                first = False
+                            else:
+                                df.write("\n{0}: ".format(dde[1]))
+                        else:
+                            dde = to_unicode_or_bust(dde) + "\n"
+                            df.write(dde.encode('utf-8'))
+
+            # Get the Vim-EPUB option to make the correct split
+            diff_split = vim.eval("g:VimEPUB_DiffSplit")
+
+            if diff_split.lower() == "horizontal":
+                diff_split = "sp"
+            elif diff_split.lower() == "vertical":
+                diff_split = "vsp"
+            else:
+                diffsplit = "sp"
+
+            # Open the  diff in the correct split and  make the split
+            # buffer disappear of buffers list if closed.
+            vim.command(":{0} .vepub.diff".format(diff_split))
+            vim.command(":setl buftype=nofile bufhidden=wipe nobuflisted")
+
+            return True
         else:
             return False
 
@@ -622,13 +701,66 @@ class TocParser(HTMLParser):
 
 
 
+def to_unicode_or_bust(obj, encoding='utf-8'):
+    """By Kumar McMillan"""
+
+    if isinstance(obj, basestring):
+        if not isinstance(obj, unicode):
+            obj = unicode(obj, encoding)
+    return obj
+
+
+def merge_html(file_1,file_2,output_file):
+    try:
+        output_file = path(output_file)
+        os.remove(output_file.realpath())
+    except OSError,err:
+        if err.errno == 2:
+            pass
+
+    file_1,file_1_contents = path(file_1),""
+    file_2,file_2_contents = path(file_2),""
+
+    with open(file_1.realpath(),"r") as fi:
+        record = True
+
+        for line in fi:
+            if record:
+                if line.strip() == "</body>":
+                    record = False
+                else:
+                    file_1_contents += line
+
+    with open(file_2.realpath(),"r") as fi:
+        record = False
+
+        for line in fi:
+            if record:
+                file_2_contents += line
+            else:
+                if line.strip() == "<body>":
+                    record = True
+
+    with open(output_file.realpath(),"w") as fi:
+        fi.write(file_1_contents)
+        fi.write("\n")
+        fi.write(file_2_contents)
+
+    return True
+
 def ask_for_refresh():
     print "Refresh the EPUB content by selecting EPUB buffer and typing :edit"
 
 def get_current_line(vim):
     return vim.current.buffer[vim.current.window.cursor[0]-1]
+def get_next_line(vim):
+    return vim.current.buffer[vim.current.window.cursor[0]]
 
 def get_user_input(vim,prompt):
-    vim.command('let g:EpubMode_Prompt = input("{0} ")'.format(prompt))
+    vim.command('let g:VimEPUB_Prompt = input("{0} ")'.format(prompt))
     print " "
-    return vim.eval("g:EpubMode_Prompt")
+
+    uinput = vim.eval("g:VimEPUB_Prompt")
+    vim.command('let g:VimEPUB_Prompt = "None"')
+
+    return uinput
