@@ -8,8 +8,9 @@ CONTENTS                                                               *vim-epub
 
    3. Usage .................................................... |vepub-usage|
       3.1 Application the commands ............................. |vepub-field|
-      3.2 Commands .......................................... |vepub-commands|
-      3.3 Extras .............................................. |vepub-extras|
+      3.2 Global options ..................................... |vepub-options|
+      3.3 Commands .......................................... |vepub-commands|
+      3.4 Extras .............................................. |vepub-extras|
 
    4. Licence ................................................ |vepub-licence|
    5. Remerciements ................................. |vepub-acknowledgements|
@@ -43,6 +44,10 @@ Some commands - typically those who add files − will need a ':edit'
 to reveal  their action and  update the EPUB's contents  buffer. They
 are marked with {NeedRefresh}.
 
+The commands that are only usable with EPUB2 files are marked with {EPU2}, the
+commands that are only usable with EPUB3 files are marked with {EPUB3}.
+Agnostic-EPUB-versions commands are marked with any of these markers.
+
 -------------------------------------------------------------------------------
 3.1 Application of the commands                                     *vepub-field*
 
@@ -63,17 +68,25 @@ This buffer may look like this:
 	OEBPS/Text/Text.xhtml
 	META-INF/container.xml
 
-Some Vim-EPUB's commands are only usable on this "EPUB's content" buffer.
-In this documentation, they are marked with {OnEPUBContentsBuffer}.
+Application of the command markers
+----------------------------------
 
-Some Vim-EPUB's commands are only usable on text files' buffers (xhtml…).
-In this documentation, they are marked with {OnTextBuffer}.
-
-At last, Some Vim-EPUB's commands are usable on any buffer.
-In this documentation, they are marked with {OnAnyBuffer}.
+{OnEPUBContentsBuffer} | Command only usable on "EPUB's content" buffer.
+{OnTextBuffer}         | Command only usable on text files' buffers (xhtml…).
+{OnAnyBuffer}          | Command usable on any buffer.
 
 -------------------------------------------------------------------------------
-3.2 Commands                                                     *vepub-commands*
+3.2 Global options                                                *vepub-options*
+
+g:VimEPUB_EPUB_Version ~
+
+EPUB versions managed by Vim-EPUB:
+	− "2" (EPUB2)
+	- "3" (EPUB3)
+	- "2;3" (EPUB2 & EPUB3: compatibility mode) (default)
+
+-------------------------------------------------------------------------------
+3.3 Commands                                                     *vepub-commands*
 
 AddEmptyPage ~
 
@@ -139,6 +152,17 @@ Usage:
 
 Merge the files on the current and next lines, either in the file on the
 current line or in another filepath given by the user.
+
+
+RemoveUnusedMedias ~
+
+{OnAnyBuffer} {NeedRefresh}
+
+Usage:
+	:RemoveUnusedMedias
+
+Research all unused medias in the EPUB  file et make the user able to
+remove them.
 
 
 BackupEPUB ~
@@ -215,8 +239,23 @@ Options:
 
 Open the EPUB file in the system-defined ebook viewer.
 
+
+UpdateToc ~
+
+{OnAnyBuffer} {NeedRefresh}
+
+Usage: 
+ 	:UpdateToc
+
+Options:
+	g:VimEPUB_EPUB_Version 
+		See |vepub-options|
+
+Create or update the EPUB's table of contents.
+To add a table of contents _page_, see AddTocPage command.
+
 -------------------------------------------------------------------------------
-3.3 Extras                                                         *vepub-extras*
+3.4 Extras                                                         *vepub-extras*
 
 Snippets ~
 
@@ -247,5 +286,11 @@ To Kumar McMillan, for his brilliant talk about Python and Unicode
 - a subject that made me regularly mad.
 
     http://farmdev.com/talks/unicode/
+
+To Exirel, for his python module "epub", very usefull if you want to make a NCX file without headeache.
+The python module "epub" is released under GPL/LGPL licenses.
+
+	https://bitbucket.org/exirel/epub
+	https://pypi.python.org/pypi/epub
 
 vim:tw=78:ts=8:ft=help:norl:spelllang=en:

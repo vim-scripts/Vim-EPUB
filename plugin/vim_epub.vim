@@ -11,6 +11,7 @@ au BufReadCmd *.epub call zip#Browse(expand("<amatch>"))
 
 let g:VimEPUB_DiffSplit = "horizontal"
 let g:VimEPUB_OpenCommand = "None"
+let g:VimEPUB_EPUB_Version = "2;3"
 
 "--- Python imports -----------------------------------------------------------
 
@@ -716,6 +717,161 @@ if epubs.valid:
 endOfPython
 endfunction
 
+function! RemoveUnusedMedias()
+python << endOfPython
+from __future__ import unicode_literals
+
+from vim import *
+
+from vim_epub import *
+
+epubs = EPUB(vim.buffers)
+
+if epubs.valid:
+    texts = epubs.get_files_by_extension(["html","xhtml"])
+
+    medias = []
+    m = epubs.get_files_by_extension(["gif","png","jpg","jpeg","svg","css"])
+
+    location,make_dir = epubs.guess_destination(None)
+    if epubs.oebps["used"]:
+        for media in m:
+            if epubs.oebps["variant"] in m:
+                medias.append(
+                    media.replace(epubs.oebps["variant"],"..")
+                )
+            else:
+                medias.append(media)
+    else:
+        medias = m
+
+    have_tmp_path = epubs.make_working_dir()
+
+    if have_tmp_path:
+        epubs.extract()
+
+        used_medias = []
+
+        for text_file in texts:
+            tf = epubs.temporary_epub["path"]+text_file
+
+            with open(tf,"r") as tfo:
+                for line in tfo:
+                    for media in medias:
+                        if media in line:
+                            if not media in used_medias:
+                                used_medias.append(media)
+
+        unused_medias = []
+
+        if len(medias) != len(used_medias):
+            for media in medias:
+                if not media in used_medias:
+                    unused_medias.append(media)
+
+        if unused_medias:
+            print "Remove medias:\n"
+
+            for media in unused_medias:
+                removing = True
+
+                while removing:
+                    do_remove = get_user_input(vim,"Remove {0} [yes/no]?".format(media))
+
+                    if do_remove.lower()[0] in ["y","n"]:
+
+                        do_remove = do_remove.lower()[0]
+
+                        if do_remove == "y":
+                            os.remove(
+                                "{0}{1}".format(epubs.temporary_epub["path"],media)
+                            )
+
+                            removing = False
+                        else:
+                            removing = False
+
+                    else:
+                        pass
+
+            success = epubs.recompress()
+            if success:
+                # Replace the old epub file with the new and clean the temporary
+                # work folder.
+                epubs.move_new_and_clean()
+
+                # Rechargement du fichier EPUB __________________________________
+                vim.command("""echom 'Unused medias removed'""")
+                ask_for_refresh()
+        else:
+            epubs.remove_temp_dir()
+endOfPython
+endfunction
+
+function! UpdateTOC()
+python << endOfPython
+from __future__ import unicode_literals
+
+from vim import *
+from vim_epub import *
+
+epubs = EPUB(vim.buffers)
+
+if epubs.valid:
+    correct_versions = True
+
+    epub_versions = vim.eval("g:VimEPUB_EPUB_Version")
+
+    if len(epub_versions.split(";")) > 1:
+        epub_versions = [int(version) for version in epub_versions.split(";")]
+    else:
+        epub_versions = [int(epub_versions)]
+
+    for version in epub_versions:
+        if version in [2,3]:
+            pass
+        else:
+            vim.command("""echom 'g:VimEPUB_EPUB_Version: Invalid parameter value'""")
+            vim.command("""echom '-> Invalid Value: {0}, elem {1}'""".format(epub_versions,version))
+            vim.command("""echom '-> See documentation'""")
+
+            correct_versions = False
+
+    if correct_versions:
+        have_tmp_path = epubs.make_working_dir()
+
+        if have_tmp_path:
+            epubs.extract()
+
+            if len(epub_versions) > 1:
+                # Compatibility between EPUB2 & EPUB3 : g:VimEPUB_EPUB_Version = "2;3"
+                success = epubs.make_TOC(epub2=True,epub3=True)
+
+            else:
+                if epub_versions[0] == 2:
+                    # EPUB2 only: g:VimEPUB_EPUB_Version = "2"
+                    success = epubs.make_TOC(epub2=True,epub3=False)
+
+                elif epub_versions[0] == 3:
+                    # EPUB3 only: g:VimEPUB_EPUB_Version = "3"
+                    success = epubs.make_TOC(epub2=False,epub3=True)
+
+                else:
+                    success = None
+
+            if success:
+                recompress = epubs.recompress()
+                if recompress:
+                    # Replace the old epub file with the new and clean the temporary
+                    # work folder.
+                    epubs.move_new_and_clean()
+
+                    # Rechargement du fichier EPUB __________________________________
+                    ask_for_refresh()
+
+endOfPython
+endfunction
+
 "--- Vim commands -------------------------------------------------------------
 
 " Add generated/empty medias
@@ -726,6 +882,9 @@ command! AddTocPage call AddTocPage()
 " Add existing medias
 command! AddMedia call AddNewMedia()
 
+" Table of contents
+command! UpdateToc call UpdateTOC()
+
 " Edition commands
 command! LinkToCss call LinkPageToCSS()
 
@@ -735,6 +894,7 @@ command! BackupEPUB call BackupEPUB()
 command! DiffEPUB call DiffEPUB()
 command! DiffLastEPUB call DiffLastEPUB()
 command! MergeFiles call MergeFiles()
+command! RemoveUnusedMedias call RemoveUnusedMedias()
 
 " Others
 command! OpenReader call OpenReader()

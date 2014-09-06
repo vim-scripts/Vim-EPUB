@@ -6,6 +6,8 @@
 # Released under GNU GPL version 3
 # By Etienne Nadji <etnadji@eml.cc>
 
+#--- builtin -------------------------------------
+
 from __future__ import unicode_literals
 
 import os
@@ -14,13 +16,21 @@ import shutil
 import zipfile
 
 from subprocess import Popen, PIPE, STDOUT
-from HTMLParser import HTMLParser
+
+#--- third parts ---------------------------------
+
+import epub
+import epubdiff
 
 from path import path
 
+#--- Vim-EPUB ------------------------------------
+
+import vepub_nav
+import vepub_toc
 from vepub_skels import *
 
-import epubdiff
+#=== EPUB Class ================================================================
 
 class EPUB:
     def __init__(self,vim_buffers=None):
@@ -213,11 +223,13 @@ class EPUB:
             if platform.system() == "Linux" or "bsd" in platform.system().lower:
                 os.popen('zip -X -Z store "{0}" mimetype'.format(nzip)).read()
                 os.popen('zip -r "{0}" META-INF/ {1}/'.format(nzip,self.oebps["variant"])).read()
+                os.popen('zip -r "{0}" *'.format(nzip))
                 return True
 
             if platform.system() == "Darwin":
                 os.system('zip -X "{0}" mimetype'.format(nzip))
                 os.system('zip -rg "{0}" META-INF -x \*.DS_Store'.format(nzip))
+                os.system('zip -rg "{0}" *'.format(nzip))
                 os.system('zip -rg "{0}" {1} -x \*.DS_Store'.format(nzip,self.oebps["variant"]))
                 return True
 
@@ -313,6 +325,23 @@ class EPUB:
                     return True
 
         return False
+
+    def get_file(self,file_path,temp_dir=False):
+        """
+        Check for a file in the EPUB's content and return it's path.
+
+          - file_path: path.path instance
+        """
+        if self.has_file(file_path):
+            for f in self.original_epub["zip_files"]:
+                if file_path.ext[1:] in f:
+                    if file_path.basename() in f.split("/")[-1]:
+                        if temp_dir:
+                            return "{0}{1}".format(self.temporary_epub["path"],f)
+                        else:
+                            return f
+        else:
+            return False
 
     def get_files_by_extension(self,extension):
         """
@@ -526,9 +555,19 @@ class EPUB:
             files_tocs = []
 
             for xhtml_file in text_files:
+                xhtml_source = xhtml_file[len(self.temporary_epub["path"])+1:]
+
+                if self.oebps["used"]:
+                    xhtml_source = xhtml_source[len(self.oebps["variant"])+1:]
+
                 with open(xhtml_file,"r") as xf:
-                    parser = TocParser()
-                    files_tocs.extend(parser.get_struct(xf.read()))
+                    parser = vepub_toc.TocParser()
+                    files_tocs.extend(
+                            parser.get_struct(
+                                xf.read(),
+                                xhtml_source
+                            )
+                    )
 
             toc = self._make_raw_toc_list(files_tocs)
 
@@ -536,6 +575,267 @@ class EPUB:
 
         else:
             return None
+
+    def _make_ncx(self,toc_tree):
+        def _make_navmap(toc_tree):
+            def get_navpoint(elem,nav_map):
+                recursions = elem["level"] - 1
+
+                if recursions:
+                    recur_done = 0
+                    sup_navpoint = nav_map.nav_point[-1]
+
+                    while recur_done < recursions:
+                      try:
+                        sup_navpoint = sup_navpoint.nav_point[-1]
+                      except IndexError:
+                        break
+                      recur_done += 1
+
+                    return sup_navpoint
+                else:
+                    return nav_map
+
+            nav_map = epub.ncx.NavMap()
+
+            for elem in toc_tree:
+                if not "source" in elem:
+                    elem["source"] = None
+                if not "id" in elem:
+                    elem["id"] = ""
+
+                if elem["id"]:
+                    source = "{0}#{1}".format(elem["source"],elem["id"])
+                else:
+                    source = elem["source"]
+
+                nav_point = epub.ncx.NavPoint()
+                nav_point.add_label(elem["text"])
+                nav_point.src = source
+
+                nav_master = get_navpoint(elem,nav_map)
+                nav_master.add_point(nav_point)
+
+                if elem["subtitles"]:
+                    for sub in elem["subtitles"]:
+                        if not "source" in sub:
+                            sub["source"] = None
+                        if not "id" in sub:
+                            sub["id"] = ""
+
+                        if sub["id"]:
+                            source = "{0}#{1}".format(sub["source"],sub["id"])
+                        else:
+                            source = sub["source"]
+
+                        nav_point = epub.ncx.NavPoint()
+                        nav_point.add_label(sub["text"])
+                        nav_point.src = source
+
+                        nav_master = get_navpoint(sub,nav_map)
+                        nav_master.add_point(nav_point)
+
+            return nav_map.as_xml_element().toxml()
+
+        temp_1 = "{0}tmp.xml".format(self.temporary_epub["path"])
+        temp_2 = "{0}tmp2.xml".format(self.temporary_epub["path"])
+
+        with open(temp_1,"w") as tp1:
+            tp1.write(_make_navmap(toc_tree))
+
+        os.system(
+                "xmllint --format --recover {0} > {1}".format(
+                    temp_1,
+                    temp_2
+                )
+        )
+
+        navmap = ""
+
+        with open(temp_2,"r") as t:
+            xml_declaration = True
+            for line in t:
+                if xml_declaration:
+                    xml_declaration = False
+                    continue
+                else:
+                    navmap += line
+
+        for xml in [temp_1,temp_2]:
+            os.remove(xml)
+
+        return navmap
+
+    def _make_nav(self,toc_tree):
+        def _make_navmap(toc_tree):
+            def get_navpoint(elem,nav_map,added):
+                for litem in added:
+                    if elem["level"] - 1 == litem[0]:
+                        return litem[1]
+
+                return nav_map
+
+            nav_map = vepub_nav.Nav()
+            added = []
+
+            for elem in toc_tree:
+                nav_point = vepub_nav.NavPoint()
+                nav_point.text = elem["text"]
+
+                if "source" in elem:
+                    nav_point.src = elem["source"]
+                if "id" in elem:
+                    nav_point.anchor = elem["id"]
+
+                nav_master = get_navpoint(elem,nav_map,added)
+                nav_master.add_navpoint(nav_point)
+
+                if elem["level"] == 1:
+                    added = [[elem["level"],nav_point]]
+                else:
+                    added.append([elem["level"],nav_point])
+
+                if elem["subtitles"]:
+                    for sub in elem["subtitles"]:
+
+                        nav_point = vepub_nav.NavPoint()
+                        nav_point.text = sub["text"]
+
+                        if "source" in elem:
+                            nav_point.src = sub["source"]
+                        if "id" in elem:
+                            nav_point.anchor = sub["id"]
+
+                        nav_master = get_navpoint(sub,nav_map,added)
+                        nav_master.add_navpoint(nav_point)
+
+                        added.append([sub["level"],nav_point])
+
+            return nav_map.tohtml()
+
+        return _make_navmap(toc_tree)
+
+    def make_TOC(self,epub2=True,epub3=True):
+        toc_tree = self.make_TOC_tree()
+
+        if epub2 or epub3:
+            make = True
+
+        if make:
+            if epub2:
+                self.epub2_make_ncx(toc_tree)
+
+            if epub3:
+                self.make_nav(toc_tree)
+
+            return True
+        else:
+            return False
+
+    def epub2_make_ncx(self,toc_tree):
+        ncx = self.get_files_by_extension("ncx")
+
+        output_file = False
+
+        if ncx:
+            output_file = ncx[0]
+            new = False
+        else:
+            self.guess_destination(None)
+
+            if self.oebps["used"]:
+                output_file = "{0}/toc.ncx".format(self.oebps["variant"])
+            else:
+                output_file = "toc.ncx"
+
+            new = True
+
+        if output_file:
+            output_file = "{0}{1}".format(self.temporary_epub["path"],output_file)
+
+            # NCX "header" + <navMap>
+            if new:
+                header = NCX_HEAD
+            else:
+                header = ""
+                with open(output_file,"r") as ncx:
+                    record = True
+
+                    for line in ncx:
+                        if record:
+                            if "<navMap>" in line:
+                                record = False
+                            else:
+                                header += line
+
+            # navpoints
+            navpoints = self._make_ncx(toc_tree)
+
+            # NCX "footer"
+            footer = NCX_TAIL
+
+            # Write all to output_file
+
+            if not new:
+                os.remove(output_file)
+
+            with open(output_file,"w") as ncx:
+                for section in [header,navpoints,footer]:
+                    ncx.write(section)
+
+    def make_nav(self,toc_tree):
+        nav = False
+
+        for fname in ["toc.html","toc.xhtml","nav.html","nav.xhtml"]:
+            fname = path(fname)
+
+            if self.has_file(fname):
+                nav = self.get_file(fname,True)
+                break
+
+        output_file = False
+
+        if nav:
+            new = False
+        else:
+            if self.oebps["used"]:
+                output_file = "{0}{1}{2}{3}".format(self.temporary_epub["path"],self.oebps["variant"],os.sep,"nav.html")
+            else:
+                output_file = "{0}{1}".format(self.temporary_epub["path"],"nav.html")
+            new = True
+
+        if output_file:
+            # NAV "header" + <navMap>
+            if new:
+                header = NAV_HEAD
+            else:
+                header = ""
+                with open(output_file,"r") as ncx:
+                    record = True
+
+                    for line in ncx:
+                        if record:
+                            if "<body>" in line:
+                                record = False
+                            else:
+                                header += line
+
+            # navpoints
+            navpoints = self._make_nav(toc_tree)
+
+            # NAV "footer"
+            footer = NAV_TAIL
+
+            # Write all to output_file
+
+            print output_file
+
+            if not new:
+                os.remove(output_file)
+
+            with open(output_file,"w") as nav:
+                for section in [header,navpoints,footer]:
+                    nav.write(section)
 
     def make_TOC_page(self,toc_tree):
         """
@@ -659,47 +959,11 @@ class EPUB:
         else:
             return False
 
+#===============================================================================
 
 
-class TocParser(HTMLParser):
-    def __init__(self):
-        HTMLParser.__init__(self)
-        self.struct_elements = []
-        self.current_struct_level = None
-        self.current_struct_text = None
 
-    def get_struct(self,html):
-        self.feed(html)
-        return self.struct_elements
-
-    def handle_starttag(self, tag, attrs):
-        if tag in ["h1","h2","h3","h4","h5","h6"]:
-            self.current_struct_level = int(tag[1:])
-        else:
-            self.current_struct_level = None
-
-    def handle_endtag(self, tag):
-        if tag in ["h1","h2","h3","h4","h5","h6"]:
-            self.struct_elements.append(
-                    {
-                        "level":self.current_struct_level,
-                        "text":self.current_struct_text,
-                    }
-                )
-
-            if self.current_struct_level == 1:
-                self.struct_elements[-1]["subtitles"] = []
-
-            self.current_struct_level = None
-            self.current_struct_text = None
-
-    def handle_data(self, data):
-        if self.current_struct_level is not None:
-            self.current_struct_text = data
-        else:
-            self.current_struct_level = None
-
-
+#=== Functions =================================================================
 
 def to_unicode_or_bust(obj, encoding='utf-8'):
     """By Kumar McMillan"""
@@ -748,11 +1012,14 @@ def merge_html(file_1,file_2,output_file):
 
     return True
 
+
 def ask_for_refresh():
     print "Refresh the EPUB content by selecting EPUB buffer and typing :edit"
 
+
 def get_current_line(vim):
     return vim.current.buffer[vim.current.window.cursor[0]-1]
+
 def get_next_line(vim):
     return vim.current.buffer[vim.current.window.cursor[0]]
 

@@ -4,7 +4,6 @@
 
 1. *Use unicode in all the user inputs*
 2. Improve _AddMedia_ command.
-3. _MakeTOC_, a command to make the toc.ncx (EPUB2) and/or toc.xhtml (EPUB3).
 
 ## EPUB 2 Support
 

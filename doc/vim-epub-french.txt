@@ -8,8 +8,9 @@ CONTENTS                                                               *vim-epub
 
    3. Usage .................................................... |vepub-usage|
       3.1 Champ d’application des commandes .................... |vepub-field|
-      3.2 Commandes ......................................... |vepub-commands|
-      3.3 Extras .............................................. |vepub-extras|
+      3.2 Options globales ................................... |vepub-options|
+      3.3 Commandes ......................................... |vepub-commands|  
+      3.4 Extras .............................................. |vepub-extras|
 
    4. Licence ................................................ |vepub-licence|
    5. Remerciements ................................. |vepub-acknowledgements|
@@ -46,6 +47,11 @@ nécessitent, pour rendre visible leur  action, de taper ':edit' pour
 mettre à jour le tampon du contenu de l’EPUB. Le marqueur {NeedRefresh}
 les signale.
 
+Les commandes utilisables uniquement avec un EPUB de version 2 sont signalées
+par le marqueur {EPUB2}, celles utilisables uniquement avec un EPUB de version
+3 sont signalées par le marqueur {EPUB3}; les commandes indifférentes à la
+version de EPUB n’ont aucun de ces marqueurs.
+
 -------------------------------------------------------------------------------
 3.1 Champ d’application des commandes                               *vepub-field*
 
@@ -67,17 +73,26 @@ Le contenu d’un tel tampon ressemble à ceci:
 	OEBPS/Text/Text.xhtml
 	META-INF/container.xml
 
-Certaines commandes de Vim-EPUB sont uniquement utilisables dans le tampon du
-contenu d’un  fichier EPUB. Le marqueur {OnEPUBContentsBuffer} les signale.
+Marqueurs d’application des commandes:
 
-Certaines commandes de Vim-EPUB sont uniquement utilisables dans des tampons
-de fichiers textes (xhtml…). Le marqueur {OnTextBuffer} les signale.
-
-Enfin, certaines commandes de Vim-EPUB sont utilisables dans n’importe quel tampon.
-Le marqueur {OnAnyBuffer} les signale.
+{OnEPUBContentsBuffer}  | Commande uniquement utilisable dans le
+                        | tampon du contenu d’un fichier EPUB.
+{OnTextBuffer}          | Commande uniquement utilisable dans des tampons de
+                        | fichiers textes (xhtml…).
+{OnAnyBuffer}           | utilisable dans n’importe quel tampon.
 
 -------------------------------------------------------------------------------
-3.2 Commandes                                                    *vepub-commands*
+3.2 Options globales                                              *vepub-options*
+
+g:VimEPUB_EPUB_Version ~
+
+EPUB versions gérées par Vim-EPUB:
+	− "2" (EPUB2)
+	- "3" (EPUB3)
+	- "2;3" (EPUB2 & EPUB3: mode de compatibilité) (valeur par défaut)
+
+-------------------------------------------------------------------------------
+3.3 Commandes                                                    *vepub-commands*
 
 AddNewPage ~
 
@@ -144,6 +159,17 @@ Usage:
 Fusionne les fichiers correspondants à la ligne en cours et à la ligne
 suivante soit dans le fichier correspondant à la ligne en cours, soit dans un
 tout autre fichier.
+
+
+RemoveUnusedMedias ~
+
+{OnAnyBuffer} {NeedRefresh}
+
+Usage:
+	:RemoveUnusedMedias
+
+Recherche tous les  médias inutilisés de l’EPUB et  permet de les
+supprimer.
 
 
 BackupEPUB ~
@@ -222,9 +248,24 @@ Options:
 Ouvre le fichier EPUB dans le liseur de livres numériques défini par le
 système.
 
--------------------------------------------------------------------------------
-3.3 Extras                                                         *vepub-extras*
 
+UpdateToc ~
+
+{OnAnyBuffer} {NeedRefresh}
+
+Usage: 
+ 	:UpdateToc
+
+Options:
+	g:VimEPUB_EPUB_Version 
+		Voir |vepub-options|
+
+Crée, ou met à jour la table des matières de l’EPUB.
+Pour créer une _page_ de table des matières, utiliser la commande AddTocPage.
+
+-------------------------------------------------------------------------------
+3.4 Extras                                                         *vepub-extras*  
+ 
 Snippets ~
 
 Des snippets pour le greffon UltiSnips sont également disponibles avec vim-epub
@@ -253,5 +294,11 @@ shutil, tempfile…
 source régulière de confusion.
 
     http://farmdev.com/talks/unicode/
+
+À Exirel, pour son module python "epub", très utile pour générer un fichier NCX.
+Le module python "epub" est publié sous les licences GPL/LGPL.
+
+	https://bitbucket.org/exirel/epub
+	https://pypi.python.org/pypi/epub
 
 vim:tw=78:ts=8:ft=help:norl:spelllang=fr:
