@@ -36,16 +36,16 @@ Si +python apparait, tout est bon.
 
 unzip est également requis.
 
+La commande CleanFromExports nécessite pandoc:
+
+	http://johnmacfarlane.net/pandoc/index.html
+
+
 ===============================================================================
 3. Usage                                                            *vepub-usage*
 
 vim-epub ne définit aucun mapping. Libre à vous de choisir les commandes à
 mapper.
-
-Certaines commandes - typiquement celles  qui ajoutent des fichiers -
-nécessitent, pour rendre visible leur  action, de taper ':edit' pour
-mettre à jour le tampon du contenu de l’EPUB. Le marqueur {NeedRefresh}
-les signale.
 
 Les commandes utilisables uniquement avec un EPUB de version 2 sont signalées
 par le marqueur {EPUB2}, celles utilisables uniquement avec un EPUB de version
@@ -91,12 +91,19 @@ EPUB versions gérées par Vim-EPUB:
 	- "3" (EPUB3)
 	- "2;3" (EPUB2 & EPUB3: mode de compatibilité) (valeur par défaut)
 
+g:VimEPUB_Skels_Dir ~
+
+Dossier où se trouve les codes sources utilisés par Vim-EPUB. Ces codes
+sources sont par exemple ceux d’une nouvelle page insérée par AddNewPage.
+
+	"none" (valeur par défaut, dans plugin/skels/)
+
 -------------------------------------------------------------------------------
 3.3 Commandes                                                    *vepub-commands*
 
 AddNewPage ~
 
-{OnAnyBuffer} {NeedRefresh}
+{OnAnyBuffer} 
 
 Usage:
 	:AddNewPage
@@ -106,7 +113,7 @@ Demande le nom d’une nouvelle page vide (xhtml) et l’ajoute au fichier EPUB.
 
 AddNewCSS ~
 
-{OnAnyBuffer} {NeedRefresh}
+{OnAnyBuffer} 
 
 Usage:
 	:AddNewCSS
@@ -118,7 +125,7 @@ Demande le nom d’une feuille de style vide (css) et l’ajoute au fichier EPUB
 
 AddMedia ~
 
-{OnAnyBuffer} {NeedRefresh}
+{OnAnyBuffer} 
 
 Usage:
 	:AddMedia
@@ -129,7 +136,7 @@ Le média peut être une image, du (X)HTML, CSS, des polices d’écriture…
 
 AddTocPage ~
 
-{OnAnyBuffer} {NeedRefresh}
+{OnAnyBuffer} 
 
 Usage:
         :AddTocPage
@@ -137,9 +144,20 @@ Usage:
 Ajoute une table des matières (TableOfContents.xhtml) dans le fichier EPUB.
 
 
+NewEPUB ~
+
+{OnAnyBuffer}
+
+Usage:
+	:NewEPUB
+
+Crée un nouveau fichier EPUB et y inclue ou non les fichiers des tampons
+ouverts.
+
+
 RenameFile ~
 
-{OnEPUBContentsBuffer} {NeedRefresh}
+{OnEPUBContentsBuffer} 
 
 Usage:
 	:RenameFile
@@ -151,7 +169,7 @@ l’EPUB.
 
 MergeFiles ~
 
-{OnEPUBContentsBuffer} {NeedRefresh}
+{OnEPUBContentsBuffer} 
 
 Usage:
 	:MergeFiles
@@ -163,7 +181,7 @@ tout autre fichier.
 
 RemoveUnusedMedias ~
 
-{OnAnyBuffer} {NeedRefresh}
+{OnAnyBuffer} 
 
 Usage:
 	:RemoveUnusedMedias
@@ -251,7 +269,7 @@ système.
 
 UpdateToc ~
 
-{OnAnyBuffer} {NeedRefresh}
+{OnAnyBuffer} 
 
 Usage: 
  	:UpdateToc
@@ -262,6 +280,34 @@ Options:
 
 Crée, ou met à jour la table des matières de l’EPUB.
 Pour créer une _page_ de table des matières, utiliser la commande AddTocPage.
+
+
+ViewMetadatas ~
+
+{OnAnyBuffer}
+
+Usage:
+	:ViewMetadatas
+
+Options:
+        g:VimEPUB_MetaSplit
+            Style de split utilisé
+
+            "horizontal" pour un split horizontal (sp) (valeur par default)
+            "vertical" pour un split vertical (vsp)
+
+Affiche les métadonnées de l’EPUB sous une forme lisible par un humain. Ou
+presque.
+
+CleanFromExports ~
+
+{OnTextBuffer}
+
+Usage:
+	:CleanFromExports
+
+Nettoie le code d’un fichier HTML provenant d’une exportation par Microsoft
+Word et Calibre.
 
 -------------------------------------------------------------------------------
 3.4 Extras                                                         *vepub-extras*  
@@ -300,5 +346,13 @@ Le module python "epub" est publié sous les licences GPL/LGPL.
 
 	https://bitbucket.org/exirel/epub
 	https://pypi.python.org/pypi/epub
+
+À Drew Neil, pour tous les épisodes de Vimcasts, et tout spécialement celui-ci:
+
+	http://vimcasts.org/episodes/using-external-filter-commands-to-reformat-html/
+
+À tous les développeurs de Pandoc (publié sous licence GPL):
+
+	http://johnmacfarlane.net/pandoc/index.html
 
 vim:tw=78:ts=8:ft=help:norl:spelllang=fr:

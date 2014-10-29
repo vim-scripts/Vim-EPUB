@@ -2,11 +2,8 @@ This is a mirror of http://www.vim.org/scripts/script.php?script_id=5006
 
 Github page: https://github.com/etnadji/vim-epub
 
-With Vim, you can already edit an epub file:
-
-au BufReadCmd *.epub call zip#Browse(expand("<amatch>"))
-
-This allows you to modify the EPUB *existing* contents. But you can't add files and many other things whithout extracting the EPUB file and recompress it in 2-step.
+With Vim, you can already edit an epub file with the builtin zip.vim.
+But it's only a RO opening. If you want to add or remove files, you need to extract and recompress the EPUB. That's boring.
 
 With Vim-EPUB, you can:
 
@@ -19,4 +16,4 @@ With Vim-EPUB, you can:
 
 See https://github.com/etnadji/vim-epub/wiki/Features for a complete list.
 
-Please note that is my first plugin. Advices, comments welcomed.
+Please note that is my first plugin. Advices, comments are welcomed.

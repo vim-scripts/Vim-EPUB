@@ -1,27 +1,40 @@
 " +-----------------------------------+
 " | Vim-EPUB plugin file              |
+" |                                   |
 " | Part of vim-epub plugin for Vim   |
 " | Released under GNU GPL version 3  |
+" |                                   |
 " | By Etienne Nadji <etnadji@eml.cc> |
 " +-----------------------------------+
 
 "--- Base actions / options ---------------------------------------------------
 
+" Autocommand to make zip.vim open EPUB files
 au BufReadCmd *.epub call zip#Browse(expand("<amatch>"))
 
-let g:VimEPUB_DiffSplit = "horizontal"
-let g:VimEPUB_OpenCommand = "None"
+" Options
+au BufReadCmd *.epub let g:VimEPUB_DiffSplit = "horizontal"
+au BufReadCmd *.epub let g:VimEPUB_MetaSplit = "vertical"
+au BufReadCmd *.epub let g:VimEPUB_OpenCommand = "None"
 let g:VimEPUB_EPUB_Version = "2;3"
+let g:VimEPUB_Skels_Dir = "None"
 
 "--- Python imports -----------------------------------------------------------
 
+" Append Vim-EPUB plugin/ to python path
 python import sys
 python import vim
 python sys.path.append(vim.eval('expand("<sfile>:h")'))
 
+"--- Setup --------------------------------------------------------------------
+
 " Warning for Windows users
 python import platform
 python if platform.system() == "Windows": vim.command("""echom 'Vim-EPUB does not work under Windows.'""")
+
+" Get Vim-EPUB plugin/ path
+python plugin_path = vim.eval('expand("<sfile>:h")')
+python vim.command('let g:VimEPUB_PluginPath = "{0}"'.format(plugin_path))
 
 "--- Functions ----------------------------------------------------------------
 
@@ -35,7 +48,6 @@ from path import path
 from vim import *
 
 from vim_epub import *
-from vepub_skels import *
 
 epubs = EPUB(vim.buffers)
 
@@ -46,7 +58,7 @@ if epubs.valid:
     while not page_set:
         page_name = get_user_input(vim,"New page name?")
 
-        if epubs.has_file(path(page_name+".xhtml")):
+        if epubs.has_file(path("{0}.xhtml".format(page_name))):
             print "This page already exists. Use another page name."
             continue
         else:
@@ -87,7 +99,7 @@ if epubs.valid:
         # Write the new page
         if page_path is not None:
             with open(page_path,"w") as npf:
-                npf.write(XHTML_SKEL)
+                npf.write(get_skel(vim,"xhtml_skel"))
 
     if page_path is not None:
         # Add the page to content.opf
@@ -96,23 +108,14 @@ if epubs.valid:
             path(page_name+".xhtml"),
             in_epub_path
         )
-        # Backup the old EPUB
+
         epubs.backup()
-        # Recompression of the EPUB from the temporary work folder
         success = epubs.recompress()
 
-        # Delete the original EPUB file _____________________________________
         if success:
-            # Déplacement du nouveau fichier et nettoyage ___________________
             epubs.move_new_and_clean()
 
-            # Rechargement du fichier EPUB __________________________________
-            vim.command(
-                """echom 'Page "{0}" added.'""".format(
-                    page_name+".xhtml"
-                )
-            )
-            ask_for_refresh()
+	    refresh(vim,'Page {0} added.'.format(page_name+".xhtml"),True)
 endOfPython
 endfunction
 
@@ -126,7 +129,6 @@ from path import path
 from vim import *
 
 from vim_epub import *
-from vepub_skels import *
 
 epubs = EPUB(vim.buffers)
 
@@ -185,7 +187,7 @@ if epubs.valid:
         # Write the new css
         if css_path is not None:
             with open(css_path,"w") as npf:
-                npf.write(CSS_SKEL)
+                npf.write(get_skel(vim,"css_skel"))
 
     if css_path is not None:
         # Add the css to content.opf
@@ -194,33 +196,20 @@ if epubs.valid:
             path(css_name+".css"),
             in_epub_path
         )
-        # Backup the old EPUB
+
         epubs.backup()
-        # Recompression of the EPUB from the temporary work folder
         success = epubs.recompress()
 
-        # Delete the original EPUB file _____________________________________
         if success:
-            # Déplacement du nouveau fichier et nettoyage ___________________
             epubs.move_new_and_clean()
 
-            # Rechargement du fichier EPUB __________________________________
-            vim.command(
-                """echom 'CSS stylesheet "{0}" added.'""".format(
-                    css_name+".xhtml"
-                )
-            )
-            ask_for_refresh()
+            refresh(vim,'CSS stylesheet "{0}" added.'.format(css_name+".css"),True)
 endOfPython
 endfunction
 
 function! AddNewMedia()
 python << endOfPython
 from __future__ import unicode_literals
-
-import os
-import shutil
-import zipfile
 
 from path import path
 from vim import *
@@ -230,107 +219,49 @@ from vim_epub import *
 epubs = EPUB(vim.buffers)
 
 if epubs.valid:
-    # Obtention du chemin du nouveau media -----------------------------------
+    # Get the filepath of the new media --------------------------------------
     media_set = False
+
     while not media_set:
         raw_media_path = get_user_input(vim,"Media path?")
 
-        media_path = path(raw_media_path)
-        #media_name = media_path.basename()
-
-        if epubs.has_file(media_path):
-            print "This media is already in the EPUB. Use another media name."
-            continue
+        if raw_media_path.lower() == "c":
+            media_set,do = True,False
         else:
-            media_set = True
+            media_path = path(raw_media_path)
 
-    media_name = media_path.basename()
+            if epubs.has_file(media_path):
+                print "This media is already in the EPUB. Use another media name."
+                print "Or type C (cancel)"
+                continue
+            else:
+                media_set,do = True,True
 
-    if media_path.ext[1:].lower() in ["jpg","jpeg","png","gif"]:
-        media_type = "image"
-    elif media_path.ext[1:].lower() in ["css"]:
-        media_type = "css"
-    elif media_path.ext[1:].lower() in ["html","xhtml"]:
-        media_type = "html"
-    elif media_path.ext[1:].lower() in ["ttf","woff","otf"]:
-        media_type = "font"
-    elif media_path.ext[1:].lower() in ["mp3","mp4","ogg"]:
-        media_type = "audio"
-    else:
-        print "Unknown format:",media_path.ext[1:]
-        media_type = "misc"
+    # Adding the new media ---------------------------------------------------
 
-    # --------------------------------------------------------------------
+    if do:
+        have_tmp_path = epubs.make_working_dir()
 
-    # Find the appropriate folder in the EPUB file for the new media.
-    add_in,make_dir = epubs.guess_destination(media_type)
+        if have_tmp_path:
+            # Extracts the EPUB and add the media
+            epubs.extract()
 
-    # Make the temporary work folder
-    have_tmp_path = epubs.make_working_dir()
+            epubs.add_media(raw_media_path)
 
-    # Extracts the EPUB and add the media --------------------------------
-    if have_tmp_path:
-        epubs.extract()
+            epubs.backup()
 
-        if make_dir:
-            try:
-                os.mkdir(
-                    "{0}{1}{2}".format(
-                        epubs.temporary_epub["path"],
-                        os.sep,
-                        add_in
+            # Recompression of the EPUB from the temporary work folder
+            success = epubs.recompress()
+
+            if success:
+                epubs.move_new_and_clean()
+
+                echom(vim,'Media {0} added.'.format(
+                        path(raw_media_path).basename()
                     )
                 )
-            except OSError:
-                pass
 
-        in_epub_path = None
-
-        if epubs.oebps["variant"] in add_in:
-            # TODO add audio,video categories
-
-            valid = False
-            for mt in ["Text","Images","Style","Styles","Fonts","Misc"]:
-                if mt in add_in:
-                    valid = True
-
-            if valid:
-                in_epub_path = "{0}{1}{2}".format(
-                    epubs.temporary_epub["path"],
-                    add_in,
-                    media_name
-                )
-                in_epub_oebps_path = "{0}/{1}".format(
-                    add_in.split("/")[1],
-                    media_name
-                )
-
-        if in_epub_path is not None:
-            shutil.copy(raw_media_path,in_epub_path)
-
-    if in_epub_path is not None:
-        # Add the media to content.opf
-        epubs.epub2_append_to_opf(
-            media_path.ext[1:].lower(),
-            media_path,
-            in_epub_oebps_path
-        )
-        # Backup the old EPUB
-        epubs.backup()
-        # Recompression of the EPUB from the temporary work folder
-        success = epubs.recompress()
-
-        # Delete the original EPUB file _____________________________________
-        if success:
-            # Replace the old epub file with the new and clean the temporary
-            # work folder.
-            epubs.move_new_and_clean()
-
-            # Rechargement du fichier EPUB __________________________________
-            vim.command(
-                """echom 'Media "{0}" added.'""".format(media_name)
-            )
-            ask_for_refresh()
+                refresh(vim)
 endOfPython
 endfunction
 
@@ -349,24 +280,16 @@ if epubs.valid:
         epubs.extract()
 
         toc_tree = epubs.make_TOC_tree()
-        epubs.make_TOC_page(toc_tree)
+        epubs.make_TOC_page(vim,toc_tree)
         epubs.epub2_predefined_append_to_opf("TocPage")
 
-        # Backup the old EPUB
         epubs.backup()
-        # Recompression of the EPUB from the temporary work folder
         success = epubs.recompress()
 
         if success:
-            # Replace the old epub file with the new and clean the temporary
-            # work folder.
             epubs.move_new_and_clean()
 
-            # Rechargement du fichier EPUB __________________________________
-            vim.command(
-                """echom 'Table of contents page added.'"""
-            )
-            ask_for_refresh()
+            refresh(vim,'Table of contents page added',True)
 endOfPython
 endfunction
 
@@ -377,14 +300,14 @@ from vim import *
 from vim_epub import *
 
 epubs = EPUB(vim.buffers)
-if epubs.valid:
-    epubs.open_reader(vim)
+if epubs.valid: epubs.open_reader(vim)
 endOfPython
 endfunction
 
 function! LinkPageToCSS()
 python << endOfPython
 from __future__ import unicode_literals
+
 from vim import *
 from vim_epub import *
 
@@ -397,7 +320,7 @@ if epubs.valid:
         location,make_dir = epubs.guess_destination("css")
 
         if epubs.oebps["used"]:
-            if "Style" in add_in:
+            if "Style" in location:
                 if "Styles" in location:
                     css_variant = "Styles"
                 else:
@@ -406,27 +329,34 @@ if epubs.valid:
         if len(available_css_files) == 1:
             css = available_css_files[0]
         else:
-            print "Please select a CSS file to link:"
+	    selection = True
 
-            count = 1
-            for css_file in available_css_files:
-                if location == "{0}/{1}/".format(epubs.oebps["variant"],css_variant):
-                    ctext = "/".join(css_file.split("/")[2:])
-                    print "  {0} - {1}".format(count,ctext)
+	    while selection:
+                print "Please select a CSS file to link:"
+
+                count = 1
+                for css_file in available_css_files:
+                    if location == "{0}/{1}/".format(epubs.oebps["variant"],css_variant):
+                        ctext = "/".join(css_file.split("/")[2:])
+                        print "  {0} - {1}".format(count,ctext)
+                    else:
+                        print "  {0} - {1}".format(count,css_file)
+
+                    count += 1
+
+                print "  C - Cancel"
+
+                choice = get_user_input(vim,"Select?")
+
+                if choice.lower() == "c":
+                    css,selection = False,False
                 else:
-                    print "  {0} - {1}".format(count,css_file)
-
-                count += 1
-
-            print "  C - Cancel"
-
-            choice = get_user_input(vim,"Select?")
-
-            if choice.lower() == "c":
-                css = False
-            else:
-                choice = int(choice) - 1
-                css = available_css_files[choice]
+                    try:
+                        choice = int(choice) - 1
+                        css = available_css_files[choice]
+			selection = False
+                    except ValueError:
+                        pass
 
     if css:
         css_href = None
@@ -491,21 +421,12 @@ if epubs.valid:
             # of the EPUB.
             epubs.replace_string(["xhtml","html"],old_filename,new_filename)
 
-            # Backup the old EPUB
             epubs.backup()
-            # Recompression of the EPUB from the temporary work folder
             success = epubs.recompress()
 
             if success:
-                # Replace the old epub file with the new and clean the temporary
-                # work folder.
                 epubs.move_new_and_clean()
-
-                # Rechargement du fichier EPUB __________________________________
-                vim.command(
-                    """echom 'File renamed to {0}.'""".format(new_filename)
-                )
-                ask_for_refresh()
+                refresh(vim,'File renamed to {0}.'.format(new_filename),true)
 endOfPython
 endfunction
 
@@ -519,8 +440,7 @@ epubs = EPUB(vim.buffers)
 if epubs.valid:
     backup_name = get_user_input(vim,"Backup name?")
 
-    if backup_name:
-        epubs.backup(backup_name)
+    if backup_name: epubs.backup(backup_name)
 endOfPython
 endfunction
 
@@ -578,142 +498,147 @@ if epubs.valid:
     have_tmp_path = epubs.make_working_dir()
 
     if have_tmp_path:
-        epubs.extract()
+        abort = False
 
-        f1 = os.sep.join(get_current_line(vim).split("/"))
-        f2 = os.sep.join(get_next_line(vim).split("/"))
-        f1_name = copy.deepcopy(f1)
-        f2_name = copy.deepcopy(f2)
+        try:
+            f1 = os.sep.join(get_current_line(vim).split("/"))
+            f2 = os.sep.join(get_next_line(vim).split("/"))
+        except AttributeError:
+            abort = True
 
-        f1 = "{0}{1}".format(epubs.temporary_epub["path"],f1)
-        f2 = "{0}{1}".format(epubs.temporary_epub["path"],f2)
+        if abort:
+            epubs.remove_temp_dir()
 
-        output_selected = False
-        output_file = None
+            print "Can't merge: invalid files."
+        else:
+            epubs.extract()
 
-        while not output_selected:
-            print "Merge {0} into:\n".format(f2_name)
-            print "1. {0}".format(f1_name)
-            print "2. A new file"
-            print "3. Cancel\n"
+            f1_name = copy.deepcopy(f1)
+            f2_name = copy.deepcopy(f2)
 
-            choice = get_user_input(vim,"Choice?")
+            f1 = "{0}{1}".format(epubs.temporary_epub["path"],f1)
+            f2 = "{0}{1}".format(epubs.temporary_epub["path"],f2)
 
-            try:
-                choice = int(choice)
+            output_selected = False
+            output_file = None
 
-                output_selected = True
-                merge = True
+            while not output_selected:
+                print "Merge {0} into:\n".format(f2_name)
+                print "1. {0}".format(f1_name)
+                print "2. A new file"
+                print "3. Cancel\n"
 
-                #--- Merge F1 and F2 into F1… ----------------------------------
+                choice = get_user_input(vim,"Choice?")
 
-                if choice == 1:
-                    output_file = f1
-                    new_file = False
+                try:
+                    choice = int(choice)
 
-                #--- … or Merge F1 and F2 into a new file… ---------------------
+                    output_selected = True
+                    merge = True
 
-                if choice == 2:
-                    correct = False
-                    new_file = True
+                    #--- Merge F1 and F2 into F1… ----------------------------------
 
-                    # Enter the new page name ----------------------------------
-                    while not correct:
-                        page_name = get_user_input(vim,"New page name?")
+                    if choice == 1:
+                        output_file = f1
+                        new_file = False
 
-                        if not page_name.endswith(".xhtml"):
-                            page_name += ".xhtml"
+                    #--- … or Merge F1 and F2 into a new file… ---------------------
 
-                        if not epubs.has_file(path(page_name)):
-                            correct = True
+                    if choice == 2:
+                        correct = False
+                        new_file = True
 
-                    # Find the appropriate folder in the EPUB file for the new page.
-                    add_in,make_dir = epubs.guess_destination("text")
+                        # Enter the new page name ----------------------------------
+                        while not correct:
+                            page_name = get_user_input(vim,"New page name?")
 
-                    if make_dir:
-                        try:
-                            os.mkdir(
-                                "{0}{1}".format(
-                                    epubs.temporary_epub["path"],
-                                    add_in
+                            if not page_name.endswith(".xhtml"):
+                                page_name += ".xhtml"
+
+                            if not epubs.has_file(path(page_name)):
+                                correct = True
+
+                        # Find the appropriate folder in the EPUB file for the new page.
+                        add_in,make_dir = epubs.guess_destination("text")
+
+                        if make_dir:
+                            try:
+                                os.mkdir(
+                                    "{0}{1}".format(
+                                        epubs.temporary_epub["path"],
+                                        add_in
+                                    )
                                 )
+                            except OSError:
+                                pass
+
+                        page_path = None
+
+                        if add_in == "{0}/Text/".format(epubs.oebps["variant"]):
+                            page_path = "{0}{1}{2}".format(
+                                epubs.temporary_epub["path"],
+                                add_in,
+                                page_name
                             )
-                        except OSError:
-                            pass
+                            in_epub_path = "Text{0}{1}".format(os.sep,page_name)
 
-                    page_path = None
+                        output_file = page_path
 
-                    if add_in == "{0}/Text/".format(epubs.oebps["variant"]):
-                        page_path = "{0}{1}{2}".format(
-                            epubs.temporary_epub["path"],
-                            add_in,
-                            page_name
+                    #--- … or cancel -----------------------------------------------
+
+                    if choice == 3:
+                        epubs.remove_temp_dir()
+                        merge,output_selected = False,True
+
+                except ValueError:
+                    pass
+
+            if merge:
+                temp_merged_file = epubs.temporary_epub["path"] + "tmp_html.html"
+
+                success = merge_html(f1,f2,temp_merged_file)
+
+                if success:
+                    # --- Operations on files --------------------------------------
+                    if new_file:
+                        answered = False
+
+                        while not answered:
+                            print "Do Vim-EPUB have to remove merged files?"
+
+                            choice = get_user_input(vim,"[yes/no]")
+
+                            if choice.lower()[0] in ["y","n"]:
+                                if choice.lower()[0] == "y":
+                                    remove_merged = True
+                                if choice.lower()[0] == "n":
+                                    remove_merged = False
+                                answered = True
+
+                        os.chdir(epubs.temporary_epub["path"])
+                        shutil.move(temp_merged_file,output_file)
+
+                        if remove_merged:
+                            for f in [f1,f2]:
+                                os.remove(f)
+                    else:
+                        for f in [f1,f2]:
+                            os.remove(f)
+                        os.chdir(epubs.temporary_epub["path"])
+                        shutil.move(temp_merged_file,f1)
+
+                    # --- Make the new EPUB and ends -------------------------------
+
+                    recompress = epubs.recompress()
+
+                    if recompress:
+                        epubs.move_new_and_clean()
+
+                        refresh(
+                            vim,
+                            'Files {0} and {1} merged in {2}.'.format(f1_name,f2_name,output_file),
+                            True
                         )
-                        in_epub_path = "Text{0}{1}".format(os.sep,page_name)
-
-                    output_file = page_path
-
-                #--- … or cancel -----------------------------------------------
-
-                if choice == 3:
-                    epubs.remove_temp_dir()
-                    merge,output_selected = False,True
-
-            except ValueError:
-                pass
-
-        if merge:
-            temp_merged_file = epubs.temporary_epub["path"] + "tmp_html.html"
-
-            success = merge_html(f1,f2,temp_merged_file)
-
-            if success:
-                # --- Operations on files --------------------------------------
-                if new_file:
-                    answered = False
-
-                    while not answered:
-                        print "Do Vim-EPUB have to remove merged files?"
-
-                        choice = get_user_input(vim,"[yes/no]")
-
-                        if choice.lower()[0] in ["y","n"]:
-                            if choice.lower()[0] == "y":
-                                remove_merged = True
-                            if choice.lower()[0] == "n":
-                                remove_merged = False
-                            answered = True
-
-                    os.chdir(epubs.temporary_epub["path"])
-                    shutil.move(temp_merged_file,output_file)
-
-                    if remove_merged:
-                        os.remove(f1)
-                        os.remove(f2)
-                else:
-                    os.remove(f1)
-                    os.remove(f2)
-                    os.chdir(epubs.temporary_epub["path"])
-                    shutil.move(temp_merged_file,f1)
-
-                # --- Make the new EPUB and ends -------------------------------
-
-                recompress = epubs.recompress()
-
-                if recompress:
-                    # Replace the old epub file with the new and clean the temporary
-                    # work folder.
-                    epubs.move_new_and_clean()
-
-                    # Rechargement du fichier EPUB __________________________________
-                    vim.command(
-                        """echom 'Files {0} and {1} merged in {2}.'""".format(
-                            f1_name,f2_name,output_file
-                        )
-                    )
-                    ask_for_refresh()
-
-
 endOfPython
 endfunction
 
@@ -796,13 +721,9 @@ if epubs.valid:
 
             success = epubs.recompress()
             if success:
-                # Replace the old epub file with the new and clean the temporary
-                # work folder.
                 epubs.move_new_and_clean()
 
-                # Rechargement du fichier EPUB __________________________________
-                vim.command("""echom 'Unused medias removed'""")
-                ask_for_refresh()
+                refresh(vim,"Unused medias removed",True)
         else:
             epubs.remove_temp_dir()
 endOfPython
@@ -831,9 +752,9 @@ if epubs.valid:
         if version in [2,3]:
             pass
         else:
-            vim.command("""echom 'g:VimEPUB_EPUB_Version: Invalid parameter value'""")
-            vim.command("""echom '-> Invalid Value: {0}, elem {1}'""".format(epub_versions,version))
-            vim.command("""echom '-> See documentation'""")
+            echom(vim,'g:VimEPUB_EPUB_Version: Invalid parameter value'))
+            echom(vim,'-> Invalid Value: {0}, elem {1}'.format(epub_versions,version))
+            echom(vim,'-> See documentation')
 
             correct_versions = False
 
@@ -845,16 +766,16 @@ if epubs.valid:
 
             if len(epub_versions) > 1:
                 # Compatibility between EPUB2 & EPUB3 : g:VimEPUB_EPUB_Version = "2;3"
-                success = epubs.make_TOC(epub2=True,epub3=True)
+                success = epubs.make_TOC(vim,epub2=True,epub3=True)
 
             else:
                 if epub_versions[0] == 2:
                     # EPUB2 only: g:VimEPUB_EPUB_Version = "2"
-                    success = epubs.make_TOC(epub2=True,epub3=False)
+                    success = epubs.make_TOC(vim,epub2=True,epub3=False)
 
                 elif epub_versions[0] == 3:
                     # EPUB3 only: g:VimEPUB_EPUB_Version = "3"
-                    success = epubs.make_TOC(epub2=False,epub3=True)
+                    success = epubs.make_TOC(vim,epub2=False,epub3=True)
 
                 else:
                     success = None
@@ -862,39 +783,180 @@ if epubs.valid:
             if success:
                 recompress = epubs.recompress()
                 if recompress:
-                    # Replace the old epub file with the new and clean the temporary
-                    # work folder.
                     epubs.move_new_and_clean()
 
-                    # Rechargement du fichier EPUB __________________________________
-                    ask_for_refresh()
+                    refresh(vim)
+endOfPython
+endfunction
+
+function! ViewMetadatas()
+python << endOfPython
+from __future__ import unicode_literals
+
+from vim import *
+
+from vim_epub import *
+import vepub_metadata as metadata
+
+epubs = EPUB(vim.buffers)
+
+if epubs.valid:
+	have_tmp_path = epubs.make_working_dir()
+
+	if have_tmp_path:
+	    epubs.extract()
+
+	    opf_file = epubs.get_file(path("content.opf"),True)
+
+	    if opf_file:
+		    metadatas_file = "metadatas.txt"
+
+		    metadata.do_all(opf_file,metadatas_file,True)
+		    epubs.remove_temp_dir()
+
+		    vim.command(
+			    ":{0} {1}".format(
+				    get_split_cmd(vim,"metadatas"),
+				    metadatas_file)
+		    )
+		    vim.command(":setl buftype=nofile bufhidden=wipe nobuflisted")
+endOfPython
+endfunction
+
+function! CleanFromExports()
+python << endOfPython
+from __future__ import unicode_literals
+
+import os
+
+from vim import *
+from vim_epub import get_skel,normal,cat_in_buffer
+
+vim.command(
+    ':silent! %!pandoc --from=html --to=markdown | ' \
+    'pandoc --from=markdown --to=html'
+)
+
+normal(vim,"ggO",True,True)
+cat_in_buffer(vim,get_skel(vim,"xhtml_head",True))
+normal(vim,"GGo",True,True)
+cat_in_buffer(vim,get_skel(vim,"xhtml_tail",True))
+normal(vim,"ggdd",True)
+endOfPython
+endfunction
+
+function! NewEPUB()
+python << endOfPython
+from __future__ import unicode_literals
+
+import os
+from vim import *
+from vim_epub import *
+
+filename = ""
+while not filename:
+    filename = get_user_input(vim,"Name of the EPUB?")
+
+if filename.endswith(".epub"):
+    filename = filename.split(".epub")[0]
+
+answered = False
+while not answered:
+    addbuffs = get_user_input(
+        vim,
+        "Include current buffers? [yes/no]"
+    )
+
+    if addbuffs.lower()[0] in ["y","n"]:
+
+        if addbuffs.lower()[0] == "y": add_buffers = True
+        if addbuffs.lower()[0] == "n": add_buffers = False
+
+        answered = True
+
+new_file = make_new_epub(vim,filename)
+
+if new_file:
+    vim.command(":silent! edit {0}".format(new_file))
+
+    # Reload Vim configuration to add Vim-EPUB commands
+    vim.command(":silent! source $MYVIMRC")
+
+    # Adding files in the current buffers to the new EPUB:
+    if add_buffers:
+        epubs = EPUB(vim.buffers)
+
+        if epubs.valid:
+                have_tmp_path = epubs.make_working_dir()
+
+                if have_tmp_path:
+                    epubs.extract()
+
+                    files = []
+                    for buffer in vim.buffers:
+                        fname = buffer.name
+                        real_path = os.path.realpath(fname)
+
+                        if fname in files: continue
+                        if fname == new_file: continue
+                        if not os.path.exists(real_path): continue
+                        if fname.endswith(".epub"): continue
+
+                        files.append(fname)
+
+                    for media in files:
+                        epubs.add_media(media)
+
+                    # Backup the old EPUB
+                    epubs.backup()
+                    # Recompression of the EPUB from the temporary work folder
+                    success = epubs.recompress()
+
+                    # Delete the original EPUB file
+                    if success:
+                        # Replace the old epub file with the new and clean the 
+                        # temporary work folder.
+                        epubs.move_new_and_clean()
+
+    refresh(vim)
 
 endOfPython
 endfunction
 
 "--- Vim commands -------------------------------------------------------------
 
+" Make new EPUB
+
+command! NewEPUB call NewEPUB()
+
 " Add generated/empty medias
-command! AddEmptyPage call AddNewPage()
-command! AddEmptyCSS call AddNewCSS()
-command! AddTocPage call AddTocPage()
+au BufReadCmd *.epub command! AddEmptyPage call AddNewPage()
+au BufReadCmd *.epub command! AddEmptyCSS call AddNewCSS()
+au BufReadCmd *.epub command! AddTocPage call AddTocPage()
 
 " Add existing medias
-command! AddMedia call AddNewMedia()
+au BufReadCmd *.epub command! AddMedia call AddNewMedia()
 
 " Table of contents
-command! UpdateToc call UpdateTOC()
+au BufReadCmd *.epub command! UpdateToc call UpdateTOC()
 
 " Edition commands
-command! LinkToCss call LinkPageToCSS()
+au BufReadCmd *.epub command! LinkToCss call LinkPageToCSS()
 
 " Files manipulation
-command! RenameFile call RenameFile()
-command! BackupEPUB call BackupEPUB()
-command! DiffEPUB call DiffEPUB()
-command! DiffLastEPUB call DiffLastEPUB()
-command! MergeFiles call MergeFiles()
-command! RemoveUnusedMedias call RemoveUnusedMedias()
+au BufReadCmd *.epub command! RenameFile call RenameFile()
+au BufReadCmd *.epub command! BackupEPUB call BackupEPUB()
+au BufReadCmd *.epub command! DiffEPUB call DiffEPUB()
+au BufReadCmd *.epub command! DiffLastEPUB call DiffLastEPUB()
+au BufReadCmd *.epub command! MergeFiles call MergeFiles()
+au BufReadCmd *.epub command! RemoveUnusedMedias call RemoveUnusedMedias()
+
+" Metadatas
+au BufReadCmd *.epub command! ViewMetadatas call ViewMetadatas()
 
 " Others
-command! OpenReader call OpenReader()
+au BufReadCmd *.epub command! OpenReader call OpenReader()
+
+au BufReadCmd *.epub command! CleanFromExports call CleanFromExports()
+au Filetype html command! CleanFromExports call CleanFromExports()
+au BufRead /tmp/Sigil/scratchpad/* command! CleanFromExports call CleanFromExports()

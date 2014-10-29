@@ -37,6 +37,12 @@ In Debian-like GNU/Linux distributions:
 
 `sudo apt-get install unzip`
 
+You also needs `pandoc` programm.
+
+Again:
+
+`sudo apt-get install pandoc`
+
 ### Plugin managers
 
 #### [Vundle](https://github.com/gmarik/vundle)

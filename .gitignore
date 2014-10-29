@@ -5,3 +5,4 @@
 test*
 .vepub.diff
 plugin/*.pyc
+metadatas.txt

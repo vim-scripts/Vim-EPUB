@@ -35,14 +35,14 @@ If you see +python, it's ok.
 
 You'll also need unzip.
 
+CleanFromExports command also needs pandoc:
+
+	http://johnmacfarlane.net/pandoc/index.html
+
 ===============================================================================
 3. Usage                                                            *vepub-usage*
 
 vim-epub doesn't define any mapping. Map all the commands you want.
-
-Some commands - typically those who add files − will need a ':edit'
-to reveal  their action and  update the EPUB's contents  buffer. They
-are marked with {NeedRefresh}.
 
 The commands that are only usable with EPUB2 files are marked with {EPU2}, the
 commands that are only usable with EPUB3 files are marked with {EPUB3}.
@@ -85,12 +85,19 @@ EPUB versions managed by Vim-EPUB:
 	- "3" (EPUB3)
 	- "2;3" (EPUB2 & EPUB3: compatibility mode) (default)
 
+g:VimEPUB_Skels_Dir ~
+
+Folder path of the templates used  by Vim-EPUB (ex: source of an page
+inserted by AddEmptyPage).
+
+	"none" (défault, in plugin/skels/)
+
 -------------------------------------------------------------------------------
 3.3 Commands                                                     *vepub-commands*
 
 AddEmptyPage ~
 
-{OnAnyBuffer} {NeedRefresh}
+{OnAnyBuffer} 
 
 Usage:
         :AddEmptyPage
@@ -101,7 +108,7 @@ Prompt for a new empty page name and add a new page (xhtml file) in the EPUB.
 
 AddEmptyCSS ~
 
-{OnAnyBuffer} {NeedRefresh}
+{OnAnyBuffer} 
 
 Usage:
         :AddEmptyCSS
@@ -112,7 +119,7 @@ Prompt for a new empty css  stylesheet name and add a stylesheet page
 
 AddMedia ~
 
-{OnAnyBuffer} {NeedRefresh}
+{OnAnyBuffer} 
 
 Usage:
         :AddMedia
@@ -123,7 +130,7 @@ The "media" can be: images,(X)HTML,CSS,fonts…
 
 AddTocPage ~
 
-{OnAnyBuffer} {NeedRefresh}
+{OnAnyBuffer} 
 
 Usage:
         :AddTocPage
@@ -131,9 +138,20 @@ Usage:
 Add a table of contents page called TableOfContents.xhtml in the EPUB.
 
 
+NewEPUB ~
+
+{OnAnyBuffer}
+
+Usage:
+	:NewEPUB
+
+Make an  new EPUB  file and  possibly add the  files of  the currents
+opened buffers.
+
+
 RenameFile ~
 
-{OnEPUBContentsBuffer} {NeedRefresh}
+{OnEPUBContentsBuffer} 
 
 Usage:
 	:RenameFile
@@ -145,7 +163,7 @@ renamed file on the others files of the EPUB.
 
 MergeFiles ~
 
-{OnEPUBContentsBuffer} {NeedRefresh}
+{OnEPUBContentsBuffer} 
 
 Usage:
 	:MergeFiles
@@ -156,7 +174,7 @@ current line or in another filepath given by the user.
 
 RemoveUnusedMedias ~
 
-{OnAnyBuffer} {NeedRefresh}
+{OnAnyBuffer} 
 
 Usage:
 	:RemoveUnusedMedias
@@ -242,7 +260,7 @@ Open the EPUB file in the system-defined ebook viewer.
 
 UpdateToc ~
 
-{OnAnyBuffer} {NeedRefresh}
+{OnAnyBuffer} 
 
 Usage: 
  	:UpdateToc
@@ -253,6 +271,32 @@ Options:
 
 Create or update the EPUB's table of contents.
 To add a table of contents _page_, see AddTocPage command.
+
+
+ViewMetadatas ~
+
+{OnAnyBuffer}
+
+Usage:
+	:ViewMetadatas
+
+Options:
+        g:VimEPUB_MetaSplit
+            Split style used
+
+            "horizontal" for an horizontal split (sp) (default)
+            "vertical" for a vertical split (vsp)
+
+Show EPUB's metadatas with an human-readable format. Or not :-).
+
+CleanFromExports ~
+
+{OnTextBuffer}
+
+Usage:
+	:CleanFromExports
+
+Tidy the code of an HTML file exported by Microsoft Word and Calibre.
 
 -------------------------------------------------------------------------------
 3.4 Extras                                                         *vepub-extras*
@@ -287,10 +331,21 @@ To Kumar McMillan, for his brilliant talk about Python and Unicode
 
     http://farmdev.com/talks/unicode/
 
-To Exirel, for his python module "epub", very usefull if you want to make a NCX file without headeache.
-The python module "epub" is released under GPL/LGPL licenses.
+To Exirel, for his python module  "epub", very usefull if you want to
+make  a NCX  file  without  headeache. The  python  module "epub"  is
+released under GPL/LGPL licenses.
 
 	https://bitbucket.org/exirel/epub
 	https://pypi.python.org/pypi/epub
+
+To Drew Neil, for all the Vimcasts episodes, and particularly this one:
+
+	http://vimcasts.org/episodes/using-external-filter-commands-to-reformat-html/
+
+To all Pandoc contributors:
+
+	http://johnmacfarlane.net/pandoc/index.html
+
+	Pandoc is published under GPL license.
 
 vim:tw=78:ts=8:ft=help:norl:spelllang=en:
