@@ -1,0 +1,34 @@
+priority -50
+
+###########################################################################
+#                            SMIL XML Snippets                            #
+#                                                                         #
+# By etnadji, for vim-epub                                                #
+###########################################################################
+
+snippet smil "SMIL: smil body" b
+<smil xmlns="http://www.w3.org/ns/SMIL" xmlns:epub="http://www.idpf.org/2007/ops" version="3.0">
+  <body>
+    $0
+  </body>
+</smil>
+endsnippet
+
+snippet par "SMIL: par(allel)" b
+<par>$0</par>
+endsnippet
+
+snippet audio "SMIL: audio clip" b
+<audio clipBegin="${2:h}:${3:m}:${4:s}.${5:ms}" clipEnd="${6:h}:${7:m}:${8:s}.${9:ms}" src="${1:../Audio/p001.mp3}"/>$0
+endsnippet
+
+snippet text "SMIL: text" b
+<text src="${1:text.xhtml}${2:#anchor}"/>$0
+endsnippet
+
+seq epub:textref="p001.xhtml" epub:type="bodymatter chapter">
+snippet seq "SMIL: seq(uence)" b
+<seq epub:textref="${1:text.xhtml}" epub:type="${2:epubsemantics}">
+  $0
+</sep>
+endsnippet

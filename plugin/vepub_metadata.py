@@ -1,6 +1,11 @@
 #!/usr/bin/python2
 # -*- coding:Utf-8 -*-
 
+# Vim-EPUB metadata python module
+# Part of vim-epub plugin for Vim
+# Released under GNU GPL version 3
+# By Etienne Nadji <etnadji@eml.cc>
+
 from __future__ import unicode_literals
 
 import os
@@ -38,7 +43,7 @@ class MetadataItem():
         return text
     def add_line(self,text,formats=False):
         self.lines.append({"text":text,"formats":formats})
-    def __repr__(self):
+    def __str__(self):
         return self.group
 
 def _get_attrib(data_tag,attrib):

@@ -41,7 +41,7 @@ class NavPoint(Nav):
         self.src = "untitled.xhtml"
         self.anchor = ""
 
-    def __repr__(self):
+    def __str__(self):
         return self.text
 
     def tohtml(self):

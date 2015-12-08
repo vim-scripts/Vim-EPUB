@@ -1,8 +1,0 @@
-*.epub
-*.bak
-*.pyc
-.temp_*/
-test*
-.vepub.diff
-plugin/*.pyc
-metadatas.txt

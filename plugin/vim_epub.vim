@@ -15,7 +15,14 @@ au BufReadCmd *.epub call zip#Browse(expand("<amatch>"))
 " Options
 au BufReadCmd *.epub let g:VimEPUB_DiffSplit = "horizontal"
 au BufReadCmd *.epub let g:VimEPUB_MetaSplit = "vertical"
-au BufReadCmd *.epub let g:VimEPUB_OpenCommand = "None"
+au BufReadCmd *.epub let g:VimEPUB_FontDefSplit = "vertical"
+
+au BufReadCmd *.epub let g:VimEPUB_EReaderCommand = "none"
+au BufReadCmd *.epub let g:VimEPUB_OpenMedia_Font = "none"
+au BufReadCmd *.epub let g:VimEPUB_OpenMedia_Image = "none"
+
+au BufReadCmd *.epub let g:VimEPUB_CleanPanels = "False"
+
 let g:VimEPUB_EPUB_Version = "2;3"
 let g:VimEPUB_Skels_Dir = "None"
 
@@ -49,9 +56,7 @@ from vim import *
 
 from vim_epub import *
 
-epubs = EPUB(vim.buffers)
-
-if epubs.valid:
+with Open_EPUB(vim.buffers) as epubs:
     # Definition of the new page's name --------------------------------------
     page_set = False
 
@@ -130,9 +135,7 @@ from vim import *
 
 from vim_epub import *
 
-epubs = EPUB(vim.buffers)
-
-if epubs.valid:
+with Open_EPUB(vim.buffers) as epubs:
     # Definition of the new css stylesheet's name ----------------------------
     css_set = False
 
@@ -216,9 +219,7 @@ from vim import *
 
 from vim_epub import *
 
-epubs = EPUB(vim.buffers)
-
-if epubs.valid:
+with Open_EPUB(vim.buffers) as epubs:
     # Get the filepath of the new media --------------------------------------
     media_set = False
 
@@ -271,9 +272,7 @@ from __future__ import unicode_literals
 from vim import *
 from vim_epub import *
 
-epubs = EPUB(vim.buffers)
-
-if epubs.valid:
+with Open_EPUB(vim.buffers) as epubs:
     have_tmp_path = epubs.make_working_dir()
 
     if have_tmp_path:
@@ -299,8 +298,97 @@ from __future__ import unicode_literals
 from vim import *
 from vim_epub import *
 
-epubs = EPUB(vim.buffers)
-if epubs.valid: epubs.open_reader(vim)
+with Open_EPUB(vim.buffers) as epub:
+    epub.open_reader(vim)
+endOfPython
+endfunction
+
+function! FindFontDefinition()
+python << endOfPython
+from __future__ import unicode_literals
+
+from vim import *
+
+from vim_epub import *
+import vepub_css as css_utils
+
+font_name = get_current_line(vim)
+
+with Open_EPUB(vim.buffers) as epubs:
+    available_css_files = epubs.get_files_by_extension("css")
+
+    if available_css_files:
+        location,_ = epubs.guess_destination("css")
+
+        have_tmp_path = epubs.make_working_dir()
+
+        if have_tmp_path:
+            epubs.extract()
+
+            cssf = []
+            for css in available_css_files:
+                css_file = "{0}{1}".format(epubs.temporary_epub["path"],css)
+                defs = css_utils.find_font_face_src(css_file)
+
+                if defs:
+                    for fdef in defs:
+                        if fdef["url"] in font_name:
+                            cssf.append([css,fdef["line"]])
+
+            if cssf:
+                epubs.remove_temp_dir()
+
+                summary = css_utils.make_fontdef_summary(
+                    font_name,
+                    cssf,
+                    "FontDefinitions.txt"
+                )
+
+                vim.command(
+                    ":{0} {1}".format(
+                        get_split_cmd(vim,"fontdef"),
+                        summary)
+                )
+
+                vim.command(":setl buftype=nofile bufhidden=wipe nobuflisted")
+
+    else:
+        # * xhtml *
+        # SI des fichiers (X)HTML
+        #    * Essai 2 * Dans les fichiers (X)HTML: Balise <style> du header
+        #    * Essai 3 * Dans les fichiers (X)HTML: Style en paramètre d’une balise
+        pass
+
+    pass
+
+endOfPython
+endfunction
+
+function! OpenMedia()
+python << endOfPython
+from __future__ import unicode_literals
+
+import os
+
+from vim import *
+from vim_epub import *
+
+media_name = get_current_line(vim)
+
+if media_name:
+    with Open_EPUB(vim.buffers) as epubs:
+        # Make the temporary work folder
+        have_tmp_path = epubs.make_working_dir()
+
+        if have_tmp_path:
+            epubs.extract()
+
+            success,mfile = epubs.open_file(vim,media_name)
+
+            if success:
+                print "{0} opened. Press ENTER.".format(mfile)
+            else:
+                echom(vim,'VimEPUB can\'t open {0}: unknown media type.'.format(mfile))
 endOfPython
 endfunction
 
@@ -311,13 +399,11 @@ from __future__ import unicode_literals
 from vim import *
 from vim_epub import *
 
-epubs = EPUB(vim.buffers)
-
-if epubs.valid:
+with Open_EPUB(vim.buffers) as epubs:
     available_css_files = epubs.get_files_by_extension("css")
 
     if available_css_files:
-        location,make_dir = epubs.guess_destination("css")
+        location,_ = epubs.guess_destination("css")
 
         if epubs.oebps["used"]:
             if "Style" in location:
@@ -334,15 +420,13 @@ if epubs.valid:
 	    while selection:
                 print "Please select a CSS file to link:"
 
-                count = 1
-                for css_file in available_css_files:
-                    if location == "{0}/{1}/".format(epubs.oebps["variant"],css_variant):
+                for num,css_file in enumerate(available_css_files):
+                    if location == "{0}/{1}/".format(
+			    epubs.oebps["variant"],css_variant):
                         ctext = "/".join(css_file.split("/")[2:])
-                        print "  {0} - {1}".format(count,ctext)
+                        print "  {0} - {1}".format(num+1,ctext)
                     else:
-                        print "  {0} - {1}".format(count,css_file)
-
-                    count += 1
+                        print "  {0} - {1}".format(num+1,css_file)
 
                 print "  C - Cancel"
 
@@ -377,9 +461,7 @@ from __future__ import unicode_literals
 from vim import *
 from vim_epub import *
 
-epubs = EPUB(vim.buffers)
-
-if epubs.valid:
+with Open_EPUB(vim.buffers) as epubs:
     # Get vim current line
     old_filename = get_current_line(vim)
 
@@ -426,7 +508,7 @@ if epubs.valid:
 
             if success:
                 epubs.move_new_and_clean()
-                refresh(vim,'File renamed to {0}.'.format(new_filename),true)
+                refresh(vim,'File renamed to {0}.'.format(new_filename),True)
 endOfPython
 endfunction
 
@@ -436,10 +518,8 @@ from __future__ import unicode_literals
 from vim import *
 from vim_epub import *
 
-epubs = EPUB(vim.buffers)
-if epubs.valid:
+with Open_EPUB(vim.buffers) as epubs:
     backup_name = get_user_input(vim,"Backup name?")
-
     if backup_name: epubs.backup(backup_name)
 endOfPython
 endfunction
@@ -449,9 +529,7 @@ python << endOfPython
 from vim import *
 from vim_epub import *
 
-epubs = EPUB(vim.buffers)
-
-if epubs.valid:
+with Open_EPUB(vim.buffers) as epubs:
     epub1_name = epubs.original_epub["path"].basename()
 
     print "Actual EPUB:",epub1_name
@@ -471,9 +549,7 @@ from __future__ import unicode_literals
 from vim import *
 from vim_epub import *
 
-epubs = EPUB(vim.buffers)
-
-if epubs.valid:
+with Open_EPUB(vim.buffers) as epubs:
     epub2 = "{0}.vepub.bak".format(epubs.original_epub["path"].abspath())
     success = epubs.open_diff(vim,epub2)
 
@@ -492,9 +568,7 @@ import copy
 from vim import *
 from vim_epub import *
 
-epubs = EPUB(vim.buffers)
-
-if epubs.valid:
+with Open_EPUB(vim.buffers) as epubs:
     have_tmp_path = epubs.make_working_dir()
 
     if have_tmp_path:
@@ -650,15 +724,13 @@ from vim import *
 
 from vim_epub import *
 
-epubs = EPUB(vim.buffers)
-
-if epubs.valid:
+with Open_EPUB(vim.buffers) as epubs:
     texts = epubs.get_files_by_extension(["html","xhtml"])
 
     medias = []
     m = epubs.get_files_by_extension(["gif","png","jpg","jpeg","svg","css"])
 
-    location,make_dir = epubs.guess_destination(None)
+    location,_ = epubs.guess_destination(None)
     if epubs.oebps["used"]:
         for media in m:
             if epubs.oebps["variant"] in m:
@@ -736,9 +808,7 @@ from __future__ import unicode_literals
 from vim import *
 from vim_epub import *
 
-epubs = EPUB(vim.buffers)
-
-if epubs.valid:
+with Open_EPUB(vim.buffers) as epubs:
     correct_versions = True
 
     epub_versions = vim.eval("g:VimEPUB_EPUB_Version")
@@ -798,9 +868,7 @@ from vim import *
 from vim_epub import *
 import vepub_metadata as metadata
 
-epubs = EPUB(vim.buffers)
-
-if epubs.valid:
+with Open_EPUB(vim.buffers) as epubs:
 	have_tmp_path = epubs.make_working_dir()
 
 	if have_tmp_path:
@@ -884,39 +952,41 @@ if new_file:
 
     # Adding files in the current buffers to the new EPUB:
     if add_buffers:
-        epubs = EPUB(vim.buffers)
+        with Open_EPUB(vim.buffers) as epubs:
+            have_tmp_path = epubs.make_working_dir()
 
-        if epubs.valid:
-                have_tmp_path = epubs.make_working_dir()
+            if have_tmp_path:
+                epubs.extract()
 
-                if have_tmp_path:
-                    epubs.extract()
+                files = []
+                for buffer in vim.buffers:
+                    fname = buffer.name
+                    real_path = os.path.realpath(fname)
 
-                    files = []
-                    for buffer in vim.buffers:
-                        fname = buffer.name
-                        real_path = os.path.realpath(fname)
+                    if fname in files:
+                        continue
+                    if fname == new_file:
+                        continue
+                    if not os.path.exists(real_path):
+                        continue
+                    if fname.endswith(".epub"):
+                        continue
 
-                        if fname in files: continue
-                        if fname == new_file: continue
-                        if not os.path.exists(real_path): continue
-                        if fname.endswith(".epub"): continue
+                    files.append(fname)
 
-                        files.append(fname)
+                for media in files:
+                    epubs.add_media(media)
 
-                    for media in files:
-                        epubs.add_media(media)
+                # Backup the old EPUB
+                epubs.backup()
+                # Recompression of the EPUB from the temporary work folder
+                success = epubs.recompress()
 
-                    # Backup the old EPUB
-                    epubs.backup()
-                    # Recompression of the EPUB from the temporary work folder
-                    success = epubs.recompress()
-
-                    # Delete the original EPUB file
-                    if success:
-                        # Replace the old epub file with the new and clean the 
-                        # temporary work folder.
-                        epubs.move_new_and_clean()
+                # Delete the original EPUB file
+                if success:
+                    # Replace the old epub file with the new and clean the 
+                    # temporary work folder.
+                    epubs.move_new_and_clean()
 
     refresh(vim)
 
@@ -943,6 +1013,10 @@ au BufReadCmd *.epub command! UpdateToc call UpdateTOC()
 " Edition commands
 au BufReadCmd *.epub command! LinkToCss call LinkPageToCSS()
 
+" Prospection
+au BufReadCmd *.epub command! FindFontDefinition call FindFontDefinition()
+au BufReadCmd *.epub command! ViewMetadatas call ViewMetadatas()
+
 " Files manipulation
 au BufReadCmd *.epub command! RenameFile call RenameFile()
 au BufReadCmd *.epub command! BackupEPUB call BackupEPUB()
@@ -951,12 +1025,12 @@ au BufReadCmd *.epub command! DiffLastEPUB call DiffLastEPUB()
 au BufReadCmd *.epub command! MergeFiles call MergeFiles()
 au BufReadCmd *.epub command! RemoveUnusedMedias call RemoveUnusedMedias()
 
-" Metadatas
-au BufReadCmd *.epub command! ViewMetadatas call ViewMetadatas()
-
-" Others
+" Opening things in an external program
 au BufReadCmd *.epub command! OpenReader call OpenReader()
+au BufReadCmd *.epub command! OpenMedia call OpenMedia()
 
+" Clean the HTML files with pandoc
 au BufReadCmd *.epub command! CleanFromExports call CleanFromExports()
 au Filetype html command! CleanFromExports call CleanFromExports()
+" Autocommand for editing EPUB files with Vim and Sigil
 au BufRead /tmp/Sigil/scratchpad/* command! CleanFromExports call CleanFromExports()

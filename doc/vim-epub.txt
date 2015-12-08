@@ -1,4 +1,4 @@
-*vim-epub.txt* A plugin for EPUB edition. U DONT'SAY?
+*vim-epub.txt* A plugin for EPUB edition. U_DONT'SAY?
 
 ===============================================================================
 CONTENTS                                                               *vim-epub*
@@ -71,9 +71,12 @@ This buffer may look like this:
 Application of the command markers
 ----------------------------------
 
-{OnEPUBContentsBuffer} | Command only usable on "EPUB's content" buffer.
-{OnTextBuffer}         | Command only usable on text files' buffers (xhtml…).
-{OnAnyBuffer}          | Command usable on any buffer.
+{OnEPUBContentsBuffer}     | Command only usable on "EPUB's content" buffer.
+{OnEPUBContentsBufferLine} | Command only usable on a line of the "EPUB's
+                           | content" buffer
+{OnTextBuffer}             | Command only usable on text files' buffers
+                           | (xhtml...).
+{OnAnyBuffer}              | Command usable on any buffer.
 
 -------------------------------------------------------------------------------
 3.2 Global options                                                *vepub-options*
@@ -81,7 +84,7 @@ Application of the command markers
 g:VimEPUB_EPUB_Version ~
 
 EPUB versions managed by Vim-EPUB:
-	− "2" (EPUB2)
+	- "2" (EPUB2)
 	- "3" (EPUB3)
 	- "2;3" (EPUB2 & EPUB3: compatibility mode) (default)
 
@@ -90,7 +93,7 @@ g:VimEPUB_Skels_Dir ~
 Folder path of the templates used  by Vim-EPUB (ex: source of an page
 inserted by AddEmptyPage).
 
-	"none" (défault, in plugin/skels/)
+	"none" (default, in plugin/skels/)
 
 -------------------------------------------------------------------------------
 3.3 Commands                                                     *vepub-commands*
@@ -125,7 +128,7 @@ Usage:
         :AddMedia
 
 Prompt for an existing media path and add it in the EPUB.
-The "media" can be: images,(X)HTML,CSS,fonts…
+The "media" can be: images,(X)HTML,CSS,fonts...
 
 
 AddTocPage ~
@@ -249,13 +252,48 @@ Usage:
         :OpenReader
 
 Options:
-	g:VimEPUB_OpenCommand
+	g:VimEPUB_EReaderCommand
 	     Program used to open the EPUB, overriding the OS settings.
 
 	     "none" the command don't override the OS settings.
 		    (default)
 
 Open the EPUB file in the system-defined ebook viewer.
+
+
+OpenMedia ~
+
+{OnEPUBContentsBuffer}
+
+Usage:
+	:OpenMedia
+
+Options:
+	g:VimEPUB_OpenMedia_Font
+	     Programme used to open the font, overriding the OS settings.
+
+	     "none" the command don't override the OS settings.
+		    (default)
+
+	g:VimEPUB_OpenMedia_Image
+	     Programme used to open the image, overriding the OS settings.
+
+	     "none" the command don't override the OS settings.
+		    (default)
+
+Troubleshooting:
+	"With the default settings, vim-epub correctly opens TTF fonts but 
+	opens OTF fonts with Libre/Open Office!"
+		The OTF extension can be mistaken with the Open Document
+		Template file format. Modify the open-by-default program
+		affected to this extension.
+	
+	"After the start of the program, Vim is no more visible in my 
+	terminal!"
+		This is due to the program output. Scroll.
+
+Open the  file on the  current line in a program defined by the user or by the
+OS settings, with xdg-open.
 
 
 UpdateToc ~
@@ -273,6 +311,23 @@ Create or update the EPUB's table of contents.
 To add a table of contents _page_, see AddTocPage command.
 
 
+FindFontDefinition ~
+
+{OnEPUBContentsBufferLine}
+
+Usage:
+	:FindFontDefinition
+
+Options:
+	g:VimEPUB_FontDefSplit
+            Split style used
+
+            "horizontal" for an horizontal split (sp) (default)
+            "vertical" for a vertical split (vsp)
+
+Show where the font on the current line is defined.
+
+
 ViewMetadatas ~
 
 {OnAnyBuffer}
@@ -288,6 +343,7 @@ Options:
             "vertical" for a vertical split (vsp)
 
 Show EPUB's metadatas with an human-readable format. Or not :-).
+
 
 CleanFromExports ~
 
@@ -317,7 +373,7 @@ vim-epub is released under the GNU General Public Licence version 3 (GPL v3).
 5. Acknowledgements                                      *vepub-acknowledgements*
 
 To  Mikhail  Gusarov  for  path.py,  a  wrapper  around  os,  shutil,
-tempfile…
+tempfile...
 
     https://github.com/jaroco/path.py
 

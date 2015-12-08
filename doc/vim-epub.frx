@@ -1,4 +1,4 @@
-*vim-epub-french.txt* Un greffon pour éditer des fichiers EPUB.
+*vim-epub.frx* Un greffon pour éditer des fichiers EPUB.
 
 ===============================================================================
 CONTENTS                                                               *vim-epub*
@@ -75,11 +75,13 @@ Le contenu d’un tel tampon ressemble à ceci:
 
 Marqueurs d’application des commandes:
 
-{OnEPUBContentsBuffer}  | Commande uniquement utilisable dans le
-                        | tampon du contenu d’un fichier EPUB.
-{OnTextBuffer}          | Commande uniquement utilisable dans des tampons de
-                        | fichiers textes (xhtml…).
-{OnAnyBuffer}           | utilisable dans n’importe quel tampon.
+{OnEPUBContentsBuffer}     | Commande uniquement utilisable dans le
+                           | tampon du contenu d’un fichier EPUB.
+{OnEPUBContentsBufferLine} | Commande uniquement utilisable sur une ligne
+                           | du tampon du contenu d’un fichier EPUB.
+{OnTextBuffer}             | Commande uniquement utilisable dans des tampons de
+                           | fichiers textes (xhtml…).
+{OnAnyBuffer}              | utilisable dans n’importe quel tampon.
 
 -------------------------------------------------------------------------------
 3.2 Options globales                                              *vepub-options*
@@ -256,15 +258,54 @@ Usage:
         :OpenReader
 
 Options:
-	g:VimEPUB_OpenCommand
+	g:VimEPUB_EReaderCommand
 	     Programme  utilisé  pour  ouvrir l’EPUB  et  outrepasser  les
 	     préférences du système.
 
 	     "none" ne pas outrepasser les préférences du système
-		    (valeur par défaut)
+		    (valeur par défaut).
 
 Ouvre le fichier EPUB dans le liseur de livres numériques défini par le
 système.
+
+
+OpenMedia ~
+
+{OnEPUBContentsBuffer}
+
+Usage:
+	:OpenMedia
+
+Options:
+	g:VimEPUB_OpenMedia_Font
+	     Programme utilisé pour ouvrir la police d’écriture et outrepasser
+	     les préférences du système.
+
+	     "none" ne pas outrepasser les préférences du système
+		    (valeur par défaut)
+
+	g:VimEPUB_OpenMedia_Image
+	     Programme utilisé pour ouvrir l’image et outrepasser les préférences
+	     du système.
+
+	     "none" ne pas outrepasser les préférences du système
+		    (valeur par défaut)
+
+Résolution d’erreurs:
+	« Avec les paramètres par défaut, vim-epub ouvre correctement les
+	polices TTF mais ouvre les polices OTF avec Libre/Open Office! »
+		L’extension OTF peut être confondue avec le modèle de document
+		Open Document. Modifiez le programme par défaut affecté à
+		cette extension.
+	
+	« Une fois, le programme lancé, Vim n’est plus visible dans le
+	terminal! »
+		Ceci est du à la sortie terminal de ce programme. Faites 
+		défiler.
+
+Ouvre le fichier correspondant à la ligne en cours dans un programme
+défini ou le programme défini par les préférences du système 
+(via xdg-open).
 
 
 UpdateToc ~
@@ -280,6 +321,23 @@ Options:
 
 Crée, ou met à jour la table des matières de l’EPUB.
 Pour créer une _page_ de table des matières, utiliser la commande AddTocPage.
+
+
+FindFontDefinition ~
+
+{OnEPUBContentsBufferLine}
+
+Usage:
+	:FindFontDefinition
+
+Options:
+	g:VimEPUB_FontDefSplit
+            Style de split utilisé
+
+            "horizontal" pour un split horizontal (sp) (valeur par default)
+            "vertical" pour un split vertical (vsp)
+
+Affiche les emplacements où la police de la ligne courante est définie.
 
 
 ViewMetadatas ~
@@ -298,6 +356,7 @@ Options:
 
 Affiche les métadonnées de l’EPUB sous une forme lisible par un humain. Ou
 presque.
+
 
 CleanFromExports ~
 

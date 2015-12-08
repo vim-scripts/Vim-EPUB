@@ -17,7 +17,7 @@ import platform
 import shutil
 import zipfile
 
-from subprocess import Popen, PIPE, STDOUT
+#from subprocess import Popen, PIPE, STDOUT
 
 #--- third parts ---------------------------------
 
@@ -31,19 +31,18 @@ from path import path
 import vepub_nav
 import vepub_toc
 
-#=== EPUB Class ================================================================
+#=== Exceptions ================================================================
 
-class EPUB:
-    """
-    EPUBs class.
+class NoEpubBufferFound(Exception): pass
 
-    A representation  of the  epub file currently  edited and  of the
-    temporary epub file folder used to bypass zip.vim read-only.
-    """
+#=== EPUB Classes ==============================================================
 
+# Context manager for EPUB class
+
+class Open_EPUB(object):
     def __init__(self,vim_buffers=None):
         """
-        Init method.
+        Open a .epub file and return a EPUB instance.
 
         vim_buffers: vim.buffers from vim python module.
         """
@@ -67,8 +66,68 @@ class EPUB:
             if epub_master_buffer:
                 self.valid = True
 
-                self.original_epub = {}
-                self.temporary_epub = {"path":None,"have_dir":False}
+                self.epub = EPUB()
+
+                self.epub.contents_buffer = epub_master_buffer
+
+                self.epub.original_epub["path"] = path(
+                        to_unicode_or_bust(epub_master_buffer)
+                )
+                self.epub.original_epub["zip_object"] = zipfile.ZipFile(epub_master_buffer)
+                self.epub.original_epub["zip_files"] = self.epub.original_epub["zip_object"].namelist()
+
+            else:
+                # No epub file found
+                self.valid = False
+
+    def __enter__(self):
+        if self.valid:
+            return self.epub
+
+        else:
+            print "No EPUB file buffer found."
+            raise NoEpubBufferFound()
+
+    def __exit__(self,type,value,traceback): pass
+
+class EPUB:
+    """
+    EPUBs class.
+
+    A representation  of the  epub file currently  edited and  of the
+    temporary epub file folder used to bypass zip.vim read-only.
+    """
+
+    def __init__(self):
+        self.original_epub = {}
+        self.temporary_epub = {"path":None,"have_dir":False}
+        self.oebps = {"used":False,"variant":""}
+
+    def open(self,vim_buffers=None):
+        """
+        vim_buffers: vim.buffers from vim python module.
+        """
+
+        if vim_buffers is None:
+            self.valid = False
+
+        else:
+            # Find the  epub's zip.vim buffer to get  the edited epub
+            # filepath.
+
+            epub_master_buffer = False
+
+            for buffer in vim_buffers:
+                buff = buffer.name.decode("utf8")
+
+                if buff.endswith(".epub"):
+                  epub_master_buffer = buff
+                  break
+
+            if epub_master_buffer:
+                self.valid = True
+
+                self.epub.contents_buffer = epub_master_buffer
 
                 self.original_epub["path"] = path(
                         to_unicode_or_bust(epub_master_buffer)
@@ -76,14 +135,9 @@ class EPUB:
                 self.original_epub["zip_object"] = zipfile.ZipFile(epub_master_buffer)
                 self.original_epub["zip_files"] = self.original_epub["zip_object"].namelist()
 
-                self.oebps = {"used":False,"variant":""}
-
             else:
-                # No epub file found
-
-                self.valid = False
-
                 print "No EPUB file buffer found."
+                raise NoEpubBufferFound()
 
     # Basic actions methods
 
@@ -581,23 +635,23 @@ class EPUB:
                 for line in opf:
                     line = line.rstrip()
 
-                    if _desunicode("item") in line:
+                    if desunicode("item") in line:
                         tab_item = line.split("<".encode("utf8"))[0]
 
-                    if _desunicode('</manifest>') in line:
+                    if desunicode('</manifest>') in line:
                         if filetype["manifest"]:
                             new_opf += "\n{0}{1}".format(tab_item,manifest)
                             new_opf += "\n</manifest>"
                         else:
                             new_opf += "\n</manifest>"
-                    elif _desunicode('</spine>') in line:
+                    elif desunicode('</spine>') in line:
                         if filetype["spine"]:
                             new_opf += "\n{0}{1}".format(tab_item,spine)
                             new_opf += "\n</spine>"
                         else:
                             new_opf += "\n</spine>"
                     else:
-                        if line.startswith(_desunicode("<?xml")):
+                        if line.startswith(desunicode("<?xml")):
                             new_opf += "{0}".format(line)
                         else:
                             new_opf = new_opf + "\n" + to_unicode_or_bust(line)
@@ -1031,10 +1085,82 @@ class EPUB:
 
     # Other methods
 
+    def open_file(self,vim,media_name):
+        """Open a file with an external program"""
+
+        extensions = {
+                "font":["ttf","otf","woff"],
+                "image":["png","jpeg","jpg","gif"]
+        }
+
+        type_defined = False
+
+        for media_type in extensions.items():
+            mt,exts = media_type[0],media_type[1]
+
+            for ext in exts:
+                lmn = media_name.lower()
+
+                if lmn.endswith(".{0}".format(ext)):
+                    type_defined = mt
+                    break
+
+            if type_defined:
+                break
+
+        if type_defined == "font":
+            custom_command = vimvar(vim,"VimEPUB_OpenMedia_Font")
+        elif type_defined == "image":
+            custom_command = vimvar(vim,"VimEPUB_OpenMedia_Image")
+        else:
+            custom_command = False
+
+        mfile = "{0}{1}".format(self.temporary_epub["path"],media_name)
+
+        if custom_command:
+            if custom_command.lower() == "none":
+                custom_command = False
+
+            if platform.system() == "Linux" or "bsd" in platform.system().lower():
+                if custom_command:
+                    os.popen(
+                            '{0} "{1}" > /dev/null'.format(
+                                custom_command,
+                                mfile
+                            )
+                    ).read()
+                else:
+                    os.popen(
+                            'xdg-open "{0}" > /dev/null'.format(mfile)
+                    ).read()
+
+                return True,mfile
+
+            elif platform.system() == "Darwin":
+                if custom_command:
+                    os.system(
+                            'open -a "{0}" {1}'.format(
+                                custom_command,
+                                mfile
+                            )
+                    )
+                else:
+                    os.system('open {0}'.format(mfile))
+
+                return True,mfile
+
+            elif platform.system() == "Windows":
+                return False,mfile
+
+            else:
+                return False,mfile
+        else:
+            return False,mfile
+
     def open_reader(self,vim):
         """Open the EPUB reader defined by the OS"""
 
-        custom_command = vim.eval("g:VimEPUB_OpenCommand")
+        custom_command = vim.eval("g:VimEPUB_EReaderCommand")
         if custom_command.lower() == "none":
             custom_command = False
 
@@ -1138,7 +1264,7 @@ def to_unicode_or_bust(obj, encoding='utf-8'):
             obj = unicode(obj, encoding)
     return obj
 
-def _desunicode(s): return s.encode("utf8")
+def desunicode(s): return s.encode("utf8")
 
 def merge_html(file_1,file_2,output_file):
     """Merge file_1 and file_2 into output_file"""
@@ -1277,6 +1403,11 @@ def get_split_cmd(vim,target):
             split = vim.eval("g:VimEPUB_MetaSplit")
         except:
             return "vsp"
+    elif target == "fontdef":
+        try:
+            split = vim.eval("g:VimEPUB_FontDefSplit")
+        except:
+            return "vsp"
     else:
         return "sp"
 
@@ -1347,6 +1478,33 @@ def get_skel(vim,skel_name,get_filepath=False):
         else:
             with open(skel,"r") as sf:
                 return sf.read()
+
+def vimvar(vim,variable):
+    return vim.eval("g:{0}".format(variable))
+
+def epub_contents_buffer(vim,epub):
+    """Navigate throught Vim buffers to get epub content buffer"""
+
+    buffers = []
+
+    contents_buffer = False
+
+    while not contents_buffer:
+        buffers.append(vim.current.buffer.name.decode("utf8"))
+        try:
+            vim.command(":bn")
+        except vim.error, error:
+            if error == 85:
+                contents_buffer = True
+
+        bn = vim.current.buffer.name.decode("utf8")
+
+        if bn in buffers:
+            return False
+        else:
+            if bn == epub.contents_buffer:
+                contents_buffer = True
+                print "Finded"
 
 def make_new_epub(vim,filename):
     """
